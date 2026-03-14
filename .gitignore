@@ -12,6 +12,12 @@ build/
 .env
 .env.local
 
+# Private portfolio CSVs — never commit or upload
+SriPort.csv
+SudhaPort.csv
+**/SriPort.csv
+**/SudhaPort.csv
+
 # Generated PDF reports (optional: remove these lines to commit PDFs)
 portfolio/reports/*.pdf
 research/reports/*.pdf
