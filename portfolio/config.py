@@ -2,13 +2,18 @@
 # ─────────────────────────────────────────────
 # Weekly Pulse Report — Configuration
 #
-# DIRECTIVE: Live data only. No hardcoded tickers or market data.
+# ═══════════════════════════════════════════════════════════════════════════════
+# HARD RULE (non-negotiable):
+#   ALL data in reports MUST be CURRENT live market data from external sources.
+#   NOTHING may be hardcoded, guessed, or silently ignored.
+#   Any failure to retrieve required external data MUST cause report generation
+#   to FAIL with an appropriate, descriptive error message (no report PDF).
+# ═══════════════════════════════════════════════════════════════════════════════
+#
 # - Portfolio: from CSV provided at runtime (--portfolio or PORTFOLIO_CSV).
 # - Macro/sector: symbol lists from macro_indices.csv / sector_etfs.csv; data fetched live each run.
 # - All price, fundamental, and macro data are fetched at execution time.
-#
-# ENFORCED RULE (do not bypass): When live data could not be retrieved, fail and say so.
-# Do NOT use hardcoded tickers, default lists, or silent fallbacks. Raise LiveDataUnavailableError.
+# - On fetch failure: raise LiveDataUnavailableError; entry points exit with error, no PDF.
 # ─────────────────────────────────────────────
 
 import os

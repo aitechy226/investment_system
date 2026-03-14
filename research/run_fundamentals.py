@@ -9,6 +9,7 @@
 #   python run_fundamentals.py
 #   python run_fundamentals.py --top 30
 #   python run_fundamentals.py --watchlist TICKER1,TICKER2,TICKER3
+#   python run_fundamentals.py --watchlist-file path/to/tickers.csv
 #   python run_fundamentals.py --output my_report.pdf
 # ─────────────────────────────────────────────
 
@@ -17,11 +18,45 @@ import os
 import sys
 import time
 from datetime import datetime
+from typing import Optional
 
 # Ensure all imports resolve from research/ folder
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from recommendations import LiveDataRequiredError  # for top-level error handler
 
 REPORTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
+
+
+def _load_watchlist(watchlist_arg: Optional[str], watchlist_file: Optional[str]) -> list:
+    """Build watchlist from --watchlist (comma-separated) and/or --watchlist-file (one ticker per line)."""
+    tickers = []
+    if watchlist_arg:
+        tickers.extend(t.strip().upper() for t in watchlist_arg.split(",") if t.strip())
+    if watchlist_file:
+        path = os.path.abspath(watchlist_file)
+        if not os.path.isfile(path):
+            raise FileNotFoundError(f"Watchlist file not found: {path}")
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                # CSV: use first column; plain text: whole line
+                cell = line.split(",")[0].strip()
+                if not cell:
+                    continue
+                # Skip header row if it looks like a column name
+                if cell.upper() in ("TICKER", "SYMBOL", "TICKERS", "SYMBOLS"):
+                    continue
+                tickers.append(cell.upper())
+    # Dedupe preserving order
+    seen = set()
+    out = []
+    for t in tickers:
+        if t not in seen:
+            seen.add(t)
+            out.append(t)
+    return out
 
 
 def main():
@@ -32,6 +67,8 @@ def main():
     parser.add_argument("--output",       type=str,   default=None, help="PDF output path")
     parser.add_argument("--watchlist",    type=str,   default=None,
                         help="Comma-separated tickers for View C (e.g. TICKER1,TICKER2)")
+    parser.add_argument("--watchlist-file", type=str, default=None,
+                        help="Path to CSV or text file with one ticker per line (first column used if CSV)")
     args = parser.parse_args()
 
     print("\n" + "═" * 60)
@@ -56,10 +93,22 @@ def main():
     # ── Step 2: Parallel fetch all ticker data ─
     print("[2/6] Fetching live fundamentals for all tickers (parallel, ~3-5 min)...")
     t1 = time.time()
-    from recommendations import load_all_ticker_data
+    from recommendations import load_all_ticker_data, LiveDataRequiredError
     import recommendations as rec_module
-    load_all_ticker_data()
+    try:
+        load_all_ticker_data()
+    except LiveDataRequiredError as e:
+        print(f"\n  ERROR: {e}")
+        if getattr(e, "__cause__", None):
+            c = e.__cause__
+            print(f"  Backend error ({type(c).__name__}): {c}")
+        sys.exit(1)
     cached = rec_module._cached_info or {}
+    if not cached:
+        raise LiveDataRequiredError(
+            "No live ticker data could be retrieved. Report cannot be generated. "
+            "Check network and data source availability."
+        )
     print(f"  ✓ {len(cached)} tickers with live data  [{time.time()-t1:.1f}s]")
 
     # ── Step 3: Score all tickers (parallel) ───
@@ -90,13 +139,16 @@ def main():
     for strategy, items in view_b.items():
         print(f"  → View B [{strategy}]: {len(items)} ideas")
 
-    # View C: use --watchlist arg if provided, otherwise prompt
-    watchlist = []
-    if args.watchlist:
-        watchlist = [t.strip().upper() for t in args.watchlist.split(",") if t.strip()]
-        print(f"  → View C watchlist: {watchlist}")
+    # View C: combine --watchlist and --watchlist-file (one ticker per line)
+    try:
+        watchlist = _load_watchlist(args.watchlist, args.watchlist_file)
+    except FileNotFoundError as e:
+        print(f"\n  ERROR: {e}")
+        sys.exit(1)
+    if watchlist:
+        print(f"  → View C watchlist: {len(watchlist)} tickers from args/file")
     else:
-        print("  → View C: no --watchlist provided, skipping holdings assessment")
+        print("  → View C: no --watchlist or --watchlist-file provided, skipping holdings assessment")
 
     view_c_scores, skipped = view_watchlist_flags(all_scores, watchlist)
     if watchlist:
@@ -144,4 +196,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except LiveDataRequiredError as e:
+        print(f"\n  ERROR: {e}")
+        if getattr(e, "__cause__", None):
+            c = e.__cause__
+            print(f"  Backend error ({type(c).__name__}): {c}")
+        sys.exit(1)

@@ -104,6 +104,11 @@ def _ensure_universe_info_loaded() -> None:
                     result[sym] = (atype, info)
             except Exception:
                 pass
+    if not result:
+        raise LiveDataRequiredError(
+            "No live ticker data could be retrieved. Report cannot be generated. "
+            "Check network, rate limits, and data source availability."
+        )
     _cached_info = result
 
 

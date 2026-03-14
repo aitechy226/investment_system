@@ -1,27 +1,26 @@
 ---
-description: Live data rule — reports must show only real API data; exit with error when live data cannot be retrieved
+description: HARD RULE — All report data must be current live data; fail with error when external data cannot be retrieved
 alwaysApply: true
 ---
 
-# Live data rule (system-wide, do not bypass)
+# Live data rule — HARD RULE (non-negotiable)
 
-**Reports must always show real, live market data from the API. When the system cannot get live data, it must exit with an appropriate error message — never generate a report with made-up or fallback numbers.**
+**ALL data included in reports MUST be based on CURRENT live market data pulled from external sources. NOTHING in reports may be hardcoded, guessed, or silently ignored. Any failure to retrieve required external data MUST result in failure to generate the report, with an appropriate error message.**
 
 ## Rules
 
 1. **Data in reports = live only**  
-   Every number in any report (prices, fundamentals, macro, sector, etc.) must come from data fetched at run time from the configured API/source. No hardcoded tickers, no default price lists, no cached/stale data used as if it were current.
+   Every number and fact in any report (prices, fundamentals, macro, sector, etc.) must come from data fetched at run time from the configured external API/source. No hardcoded tickers, no default price lists, no guessed or placeholder values, no cached/stale data used as if it were current.
 
 2. **Fail when live data is unavailable**  
-   When live data could not be retrieved (fetch failed, API error, missing config, etc.), the program must **exit with an error** and **not** produce a PDF or report. Do not use silent fallbacks, "skip and continue", or placeholder values.
+   When required live data could not be retrieved (fetch failed, API error, missing config, empty result, etc.), the program MUST **exit with an error** and **not** produce a PDF or report. Do not use silent fallbacks, "skip and continue", or placeholder values that allow a report to be generated.
 
-3. **Enforced in code**  
-   - Raise `LiveDataUnavailableError` (portfolio/macro/fundamental_bridge) or `LiveDataRequiredError` (research) when a required live fetch fails.  
-   - Do not return empty lists, default symbol lists, or fake numbers to allow a report to be generated.  
-   - Entry points (`main.py`, `run_fundamentals.py`, etc.) must catch these, print a clear message (including backend error for diagnosis), and exit with non-zero status.
+3. **Nothing silently ignored**  
+   Do not catch fetch failures and continue. Do not substitute defaults for missing data. If the system cannot get real data, it must fail and report why (with backend/diagnostic detail where possible).
 
-4. **Error messages**  
-   Use a clear, canonical message such as: "Live data could not be retrieved. Do not use hardcoded tickers or default lists." Include which ticker/source failed and, when possible, the underlying API/backend error (see descriptive-errors rule).
+4. **Enforced in code**  
+   - Raise `LiveDataUnavailableError` (portfolio/macro/fundamental_bridge) or `LiveDataRequiredError` (research) when a required live fetch fails or returns no usable data.  
+   - Entry points (`main.py`, `run_fundamentals.py`, etc.) must catch these, print a clear message (including backend error for diagnosis), and exit with non-zero status. No report PDF is written.
 
-5. **No exceptions**  
-   Every program and agent must follow this. No "skip when unavailable" or "use default when fetch fails" for any data that appears in a report.
+5. **Error messages**  
+   Use descriptive messages: what failed, which ticker/source, and when possible the underlying API/backend error (see descriptive-errors rule). No generic "something went wrong" without diagnosis.

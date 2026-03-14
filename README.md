@@ -87,14 +87,17 @@ Runtime: ~3-5 minutes (parallel fetching ~500 tickers).
 
 ## How we guarantee live data
 
-**Rule: Every number in these reports comes from live market data pulled from the API at run time. There are no made-up or fallback numbers.**
+**HARD RULE (enforced): ALL data in reports must be current live market data from external sources. Nothing may be hardcoded, guessed, or silently ignored. Any failure to retrieve required external data causes report generation to fail with an appropriate error message (no PDF is produced).**
 
 - **No report without live data**  
-  If the system cannot get real-time data (prices, fundamentals, macro, sector, etc.), it **exits with an error** and **does not generate a PDF**. You will never see a report built from stale or default data.
+  Every number in these reports comes from data pulled from the API at run time. There are no made-up or fallback numbers.
+
+- **Fail on missing data**  
+  If the system cannot get required real-time data (prices, fundamentals, macro, sector, etc.), it **exits with an error** and **does not generate a PDF**. You will never see a report built from stale, default, or guessed data.
 
 - **Where we fail explicitly**
   - **Portfolio / Weekly Pulse:** `portfolio.py` and `macro.py` raise `LiveDataUnavailableError` when batch price fetch fails, when any position has no price/sector, or when macro/sector config or fetch fails. `main.py` catches it, prints the message (and backend cause), and exits with code 1.
-  - **Fundamentals report:** `recommendations.py` raises `LiveDataRequiredError` when the S&P 500 universe or per-ticker data cannot be fetched. `fundamental_bridge.py` raises `LiveDataUnavailableError` when scoring fails for any ticker. `run_fundamentals.py` catches these and exits with a clear error; no PDF is written.
+  - **Fundamentals report:** `recommendations.py` raises `LiveDataRequiredError` when the S&P 500 universe cannot be fetched or when no live ticker data is retrieved (empty cache). `run_fundamentals.py` catches these and exits with a clear error; no PDF is written.
 
 - **No silent fallbacks**  
   We do **not** use hardcoded ticker lists, default prices, or “skip and continue” when a fetch fails. Every data path either succeeds with live data or fails with an explicit error message (including backend error details for diagnosis).

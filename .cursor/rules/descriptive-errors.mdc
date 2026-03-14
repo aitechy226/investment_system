@@ -1,38 +1,38 @@
 ---
-description: Coding standard — descriptive error messages and include backend errors for diagnosis
+description: HARD RULE — Robust error handling; always pass through actual backend error messages for troubleshooting
 alwaysApply: true
 ---
 
-# Descriptive Error Messages (Coding Standard)
+# Robust Error Handling — HARD RULE (non-negotiable)
 
-All code must use **descriptive error messages** and **surface backend/original errors** so diagnosis, troubleshooting, and code fixes are straightforward.
+Errors must be **useful for troubleshooting**. Always **pass on the actual error messages from backend systems** (APIs, libraries, services) so you know exactly what failed. This applies across all projects.
 
 ## Rules
 
-1. **Include the real backend error**
-   - When catching an exception from a library, API, or service, include it in the message: `{type(e).__name__}: {e}`.
+1. **Surface the real backend error**
+   - When catching an exception from a library, API, or external service, **include the actual error** in your message: `{type(e).__name__}: {e}`.
    - Example: `f"Backend error: {type(e).__name__}: {e}"` or `f"Failed for {ticker}. Backend error: {type(e).__name__}: {e}"`.
+   - Do not replace or hide the original message with a generic one.
 
 2. **Chain the cause**
    - Use `raise NewError("...") from e` so the original exception is attached as `__cause__`.
-   - Callers can then print or log `e.__cause__` to show the underlying error.
+   - Entry points (main, CLI, handlers) must **print or log `e.__cause__`** when present so the underlying backend error is visible to the user.
 
 3. **Add context**
    - Say what failed (e.g. which ticker, which step, which file or resource).
    - Include enough detail to reproduce or fix (paths, IDs, operation name).
 
-4. **Avoid swallowing errors**
-   - Do not use bare `except:` or `except Exception: pass` without at least logging the error.
-   - If you must handle and continue, log or store the error (type and message) for diagnosis.
+4. **Do not swallow errors**
+   - Do not use bare `except:` or `except Exception: pass` without at least logging the error (type and message).
+   - If you must handle and continue, log or store the backend error for diagnosis.
 
-5. **User-facing vs internal**
-   - User-facing: keep messages clear and non-technical where appropriate, but still include a short "technical detail" or "backend error" line when useful.
-   - Internal/API code: always include exception type and full message in raised or logged errors.
+5. **User-facing output**
+   - When reporting failure to the user, always include a line with the actual backend/original error (e.g. "Backend error (ConnectionError): ...") so troubleshooting is possible without reading code.
 
 ## Examples
 
 ```python
-# Good: descriptive + backend error + chained
+# Good: descriptive + actual backend error + chained
 try:
     data = fetch_from_api(symbol)
 except Exception as e:
@@ -41,17 +41,19 @@ except Exception as e:
         f"Backend error: {type(e).__name__}: {e}."
     ) from e
 
-# Good: per-item errors when failing on multiple items
-details = "; ".join(f"{ticker}: {err}" for ticker, err in failed)
-raise LiveDataUnavailableError(f"Per-ticker errors: {details}.")
+# Good: entry point surfaces __cause__
+except LiveDataUnavailableError as e:
+    print(f"ERROR: {e}")
+    if e.__cause__:
+        print(f"Backend error ({type(e.__cause__).__name__}): {e.__cause__}")
+    sys.exit(1)
 
-# Bad: generic message, no backend error
+# Bad: generic message, backend error lost
 except Exception as e:
     raise MyError("Something went wrong.")  # e is lost
 ```
 
-When writing or reviewing code, apply this standard so errors are descriptive and backend errors are visible.
+When writing or reviewing code, apply this standard so errors are robust and backend messages are always visible for troubleshooting.
 
 ---
-
-**Reuse in other projects:** Copy this file to that project's `.cursor/rules/` with `alwaysApply: true` to enforce the same standard there.
+**Reuse in other projects:** Copy this file to that project's `.cursor/rules/` with `alwaysApply: true` to enforce the same hard rule there.
