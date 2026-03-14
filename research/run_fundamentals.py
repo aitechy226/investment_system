@@ -62,8 +62,8 @@ def main():
     cached = rec_module._cached_info or {}
     print(f"  ✓ {len(cached)} tickers with live data  [{time.time()-t1:.1f}s]")
 
-    # ── Step 3: Score all tickers ─────────────
-    print("[3/6] Scoring tickers across 4 fundamental modules...")
+    # ── Step 3: Score all tickers (parallel) ───
+    print("[3/6] Scoring tickers across 4 fundamental modules (parallel)...")
     t2 = time.time()
     from fundamentals import (
         score_universe,

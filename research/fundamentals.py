@@ -35,9 +35,11 @@
 from __future__ import annotations
 
 import math
+import os
+import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
-import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from earnings import EarningsInfo, fetch_earnings_date, earnings_flag_text
 from data_freshness import TickerFreshness, assess_freshness, freshness_flag_text
@@ -688,24 +690,39 @@ def _generate_flags(fs: FundamentalScore, info: dict) -> List[str]:
 
 def enrich_with_earnings(scores: List[FundamentalScore]) -> List[FundamentalScore]:
     """
-    Fetch earnings dates for all scored tickers and attach to each
+    Fetch earnings dates for all scored tickers in parallel and attach to each
     FundamentalScore. Also appends earnings flag to score.flags
     if earnings are within the watch window (60 days).
 
     Called after score_universe() — kept separate so the scoring
     step doesn't slow down if earnings fetch is skipped.
     """
-    print(f"  Fetching earnings dates for {len(scores)} tickers...")
-    for fs in scores:
-        try:
-            ei = fetch_earnings_date(fs.symbol)
-            fs.earnings = ei
-            flag_text = earnings_flag_text(ei)
-            if flag_text and flag_text not in fs.flags:
-                fs.flags.append(flag_text)
-        except Exception:
-            pass
+    if not scores:
+        return scores
+    print(f"  Fetching earnings dates for {len(scores)} tickers (parallel)...")
+    max_workers = min(12, len(scores))
+    future_to_fs: Dict[Any, FundamentalScore] = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for fs in scores:
+            fut = executor.submit(_fetch_earnings_for_score, fs)
+            future_to_fs[fut] = fs
+        for fut in as_completed(future_to_fs):
+            fs = future_to_fs[fut]
+            try:
+                ei, flag_text = fut.result()
+                fs.earnings = ei
+                if flag_text and flag_text not in fs.flags:
+                    fs.flags.append(flag_text)
+            except Exception:
+                pass
     return scores
+
+
+def _fetch_earnings_for_score(fs: FundamentalScore) -> tuple:
+    """Worker: fetch earnings for one score; return (EarningsInfo, flag_text or None)."""
+    ei = fetch_earnings_date(fs.symbol)
+    flag_text = earnings_flag_text(ei)
+    return (ei, flag_text)
 
 
 # ─────────────────────────────────────────────
@@ -713,11 +730,24 @@ def enrich_with_earnings(scores: List[FundamentalScore]) -> List[FundamentalScor
 # ─────────────────────────────────────────────
 
 def score_universe(cached_info: Dict[str, tuple]) -> List[FundamentalScore]:
-    results = []
-    for symbol, (asset_type, info) in cached_info.items():
-        fs = score_ticker(symbol, asset_type, info)
-        if not fs.skipped:
-            results.append(fs)
+    """Score all tickers in parallel (CPU-bound on cached info)."""
+    if not cached_info:
+        return []
+    items = [(sym, atype, info) for sym, (atype, info) in cached_info.items()]
+    max_workers = min(16, len(items), (os.cpu_count() or 8))
+    results: List[FundamentalScore] = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(score_ticker, sym, atype, info): sym
+            for sym, atype, info in items
+        }
+        for fut in as_completed(futures):
+            try:
+                fs = fut.result()
+                if not fs.skipped:
+                    results.append(fs)
+            except Exception:
+                pass
     return results
 
 

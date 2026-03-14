@@ -9,6 +9,7 @@ import os
 import sys
 from datetime import datetime
 from typing import List, Optional
+from urllib.parse import quote
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import REPORTS_DIR
@@ -40,6 +41,19 @@ WARN_AMBER  = colors.HexColor("#E08000")
 INFO_BLUE   = colors.HexColor("#1A5FAF")
 VERIFY_GREEN = colors.HexColor("#1A7A4A")
 VERIFY_BLUE  = colors.HexColor("#1A5FAF")
+
+YAHOO_QUOTE_URL = "https://finance.yahoo.com/quote"
+
+
+def _ticker_link(symbol: str, styles) -> Paragraph:
+    """Return a Paragraph with the ticker as a clickable link to its Yahoo Finance quote page."""
+    if not symbol:
+        return _wrap_cell("", styles)
+    s = str(symbol).strip()
+    url = f"{YAHOO_QUOTE_URL}/{quote(s, safe='.')}"
+    escaped = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    html = f'<a href="{url}" color="#1A5FAF">{escaped}</a>'
+    return Paragraph(html, styles["table_cell"])
 
 
 def _build_styles():
@@ -158,7 +172,7 @@ def _holdings_table_section(styles, positions):
         else:
             fresh_str = "❓"
         rows.append([
-            p.ticker,
+            _ticker_link(p.ticker, styles),
             _wrap_cell(p.company_name or p.ticker, styles),
             f"{p.shares:.0f}",
             _na(p.avg_cost, ".2f"), _na(p.current_price, ".2f"),
@@ -239,7 +253,7 @@ def _macro_section(styles, macro):
     ]
     idx_data = [["Symbol","Description","Price","1-Wk","1-Mo","1-Yr"]]
     for m in macro.indices:
-        idx_data.append([m.symbol, _wrap_cell(m.label, styles), _na(m.current_price,".2f"),
+        idx_data.append([_ticker_link(m.symbol, styles), _wrap_cell(m.label, styles), _na(m.current_price,".2f"),
                          _pct(m.week_change_pct), _pct(m.month_change_pct), _pct(m.year_change_pct)])
     it = Table(idx_data, colWidths=[w*inch for w in [0.6,1.7,0.8,0.7,0.7,0.7]])
     it.setStyle(TableStyle([
@@ -265,7 +279,7 @@ def _macro_section(styles, macro):
     elements += [it, Spacer(1, 0.12*inch), Paragraph("Sector Rotation (best → worst this week)", styles["sub_heading"])]
     sec_data = [["ETF","Sector","1-Wk","1-Mo"]]
     for s in macro.sectors:
-        sec_data.append([s.symbol, _wrap_cell(s.label, styles), _pct(s.week_change_pct), _pct(s.month_change_pct)])
+        sec_data.append([_ticker_link(s.symbol, styles), _wrap_cell(s.label, styles), _pct(s.week_change_pct), _pct(s.month_change_pct)])
     st = Table(sec_data, colWidths=[w*inch for w in [0.6,2.2,0.8,0.8]])
     st.setStyle(TableStyle([
         ("BACKGROUND",    (0,0),(-1,0),  MID_BLUE),
@@ -349,7 +363,7 @@ def _freshness_section(styles, positions: list) -> list:
     for p in problem_positions:
         tf = p.freshness
         rows.append([
-            p.ticker,
+            _ticker_link(p.ticker, styles),
             _wrap_cell(p.company_name or p.ticker, styles),
             _wrap_cell(f"{tf.price.flag} {tf.price.label}", styles),
             _wrap_cell(f"{tf.fundamentals.flag} {tf.fundamentals.label}", styles),
@@ -420,7 +434,7 @@ def _earnings_section(styles, positions: list) -> list:
             days_str   = str(ei.days_until) if ei.days_until is not None else "—"
             urgency_str = f"{ei.flag} {ei.urgency.capitalize()}"
         cal_data.append([
-            p.ticker,
+            _ticker_link(p.ticker, styles),
             _wrap_cell(p.company_name or p.ticker, styles),
             date_str, days_str, urgency_str,
         ])

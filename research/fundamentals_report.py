@@ -9,8 +9,10 @@
 from __future__ import annotations
 
 import os
+import xml.sax.saxutils
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
+from urllib.parse import quote
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -27,6 +29,12 @@ from reportlab.platypus import (
 )
 
 from fundamentals import FundamentalScore
+
+YAHOO_QUOTE_URL = "https://finance.yahoo.com/quote"
+
+# ── Page geometry (letter 8.5" wide, margins 0.65" each side) ─
+_PAGE_WIDTH = 8.5 * inch
+_CONTENT_WIDTH = _PAGE_WIDTH - (0.65 * inch * 2)  # ~7.2 inch
 
 # ── Colours (consistent with report.py) ──────
 DARK_BLUE  = colors.HexColor("#0D2137")
@@ -93,6 +101,8 @@ def _build_styles():
             fontSize=7, textColor=MID_GREY, fontName="Helvetica"),
         "disclaimer": ParagraphStyle("FRDisclaimer", parent=base["Normal"],
             fontSize=6.5, textColor=MID_GREY, fontName="Helvetica-Oblique", spaceBefore=4),
+        "table_cell": ParagraphStyle("FRTableCell", parent=base["Normal"],
+            fontSize=6, leading=8, fontName="Helvetica", wordWrap="CJK"),
     }
 
 
@@ -112,14 +122,36 @@ def _pct(val, fmt="+.1f") -> str:
     except: return str(val)
 
 
+def _wrap_cell(text, style_name: str = "table_cell") -> Paragraph:
+    """Wrap text in a Paragraph so it wraps inside table cells; escape XML."""
+    if text is None:
+        text = ""
+    s = str(text).strip()
+    escaped = xml.sax.saxutils.escape(s)
+    styles = _build_styles()
+    return Paragraph(escaped, styles[style_name])
+
+
+def _ticker_link(symbol: str, style_name: str = "table_cell") -> Paragraph:
+    """Return a Paragraph with the ticker as a clickable link to its Yahoo Finance quote page."""
+    if not symbol:
+        return _wrap_cell("", style_name)
+    s = str(symbol).strip()
+    url = f"{YAHOO_QUOTE_URL}/{quote(s, safe='.')}"
+    escaped = xml.sax.saxutils.escape(s)
+    html = f'<a href="{url}" color="#1A5FAF">{escaped}</a>'
+    styles = _build_styles()
+    return Paragraph(html, styles[style_name])
+
+
 def _score_cell(score: float) -> Paragraph:
     """A coloured score pill for table cells."""
     styles = _build_styles()
     colour = _score_colour(score)
     label  = _score_label(score)
     style  = ParagraphStyle("ScoreCell", parent=styles["body"],
-        fontSize=8, textColor=colour, fontName="Helvetica-Bold", alignment=1)
-    return Paragraph(f"{score:.0f}<br/><font size='6'>{label}</font>", style)
+        fontSize=6, textColor=colour, fontName="Helvetica-Bold", alignment=1)
+    return Paragraph(f"{score:.0f}<br/><font size='5'>{label}</font>", style)
 
 
 # ─────────────────────────────────────────────
@@ -171,6 +203,8 @@ def _legend_section(styles) -> list:
         ["Income",           "Is the dividend sustainable and growing?",
          "Yield, payout ratio, FCF coverage, 5yr avg yield"],
     ]
+    # Wrap long text so it fits in columns
+    lt_rows = [[r[0], r[1], _wrap_cell(r[2])] for r in legend_data]
     score_bands = [
         ["Score Band", "Label", "Interpretation"],
         ["75 – 100", "Strong", "Top quartile — significant strength in this factor"],
@@ -179,33 +213,34 @@ def _legend_section(styles) -> list:
         ["30 – 44",  "Weak",   "Below average — some concern in this factor"],
         ["0 – 29",   "Poor",   "Bottom quartile — meaningful weakness"],
     ]
+    st_rows = [[r[0], r[1], _wrap_cell(r[2])] for r in score_bands]
 
-    lt = Table(legend_data, colWidths=[1.4*inch, 1.8*inch, 3.8*inch])
+    lt = Table(lt_rows, colWidths=[1.4*inch, 1.8*inch, 3.8*inch])
     lt.setStyle(TableStyle([
         ("BACKGROUND",  (0,0),(-1,0), MID_BLUE),
         ("TEXTCOLOR",   (0,0),(-1,0), WHITE),
         ("FONTNAME",    (0,0),(-1,0), "Helvetica-Bold"),
         ("FONTNAME",    (0,1),(-1,-1),"Helvetica"),
-        ("FONTSIZE",    (0,0),(-1,-1), 8),
-        ("TOPPADDING",  (0,0),(-1,-1), 4),
-        ("BOTTOMPADDING",(0,0),(-1,-1),4),
-        ("LEFTPADDING", (0,0),(-1,-1), 6),
+        ("FONTSIZE",    (0,0),(-1,-1), 7),
+        ("TOPPADDING",  (0,0),(-1,-1), 3),
+        ("BOTTOMPADDING",(0,0),(-1,-1),3),
+        ("LEFTPADDING", (0,0),(-1,-1), 5),
         ("GRID",        (0,0),(-1,-1), 0.25, MID_GREY),
         ("ROWBACKGROUNDS",(0,1),(-1,-1),[WHITE, LIGHT_BLUE]),
         ("BACKGROUND",  (0,1),(0,-1), LIGHT_BLUE),
         ("FONTNAME",    (0,1),(0,-1), "Helvetica-Bold"),
     ]))
 
-    st = Table(score_bands, colWidths=[0.9*inch, 0.7*inch, 5.4*inch])
+    st = Table(st_rows, colWidths=[0.9*inch, 0.7*inch, 5.4*inch])
     st.setStyle(TableStyle([
         ("BACKGROUND",  (0,0),(-1,0), DARK_BLUE),
         ("TEXTCOLOR",   (0,0),(-1,0), WHITE),
         ("FONTNAME",    (0,0),(-1,0), "Helvetica-Bold"),
         ("FONTNAME",    (0,1),(-1,-1),"Helvetica"),
-        ("FONTSIZE",    (0,0),(-1,-1), 8),
-        ("TOPPADDING",  (0,0),(-1,-1), 3),
-        ("BOTTOMPADDING",(0,0),(-1,-1),3),
-        ("LEFTPADDING", (0,0),(-1,-1), 6),
+        ("FONTSIZE",    (0,0),(-1,-1), 7),
+        ("TOPPADDING",  (0,0),(-1,-1), 2),
+        ("BOTTOMPADDING",(0,0),(-1,-1),2),
+        ("LEFTPADDING", (0,0),(-1,-1), 5),
         ("GRID",        (0,0),(-1,-1), 0.25, MID_GREY),
     ]))
 
@@ -241,9 +276,9 @@ def _scored_table(
         rank_score = getattr(s, f"{rank_by}_score") if rank_by != "composite" else s.composite_score
         rows.append([
             str(i),
-            s.symbol,
-            s.name[:22],
-            s.sector[:16],
+            _ticker_link(s.symbol),
+            _wrap_cell(s.name),
+            _wrap_cell(s.sector),
             _na(s.current_price, ".2f", "$"),
             f"${s.market_cap_b:.0f}B" if s.market_cap_b else "n/a",
             _na(s.forward_pe, ".1f"),
@@ -257,13 +292,14 @@ def _scored_table(
             Paragraph(
                 s.freshness.summary_flag if s.freshness else "❓",
                 ParagraphStyle("FreshCell", parent=_build_styles()["body"],
-                    fontSize=8, alignment=1,
+                    fontSize=6, alignment=1,
                     textColor=_freshness_colour(s.freshness.worst_status) if s.freshness else MID_GREY)
             ),
         ])
 
-    col_w = [0.25, 0.55, 1.45, 1.0, 0.6, 0.6, 0.52, 0.42, 0.52, 0.56, 0.48, 0.60, 0.46, 0.62, 0.35]
-    col_w = [w * inch for w in col_w]
+    col_w_inch = [0.25, 0.55, 1.45, 1.0, 0.6, 0.6, 0.52, 0.42, 0.52, 0.56, 0.48, 0.60, 0.46, 0.62, 0.35]
+    total_w = sum(col_w_inch)
+    col_w = [w * (_CONTENT_WIDTH / total_w) for w in col_w_inch]
 
     t = Table(rows, colWidths=col_w, repeatRows=1)
     t.setStyle(TableStyle([
@@ -271,10 +307,10 @@ def _scored_table(
         ("TEXTCOLOR",     (0,0),(-1,0),  WHITE),
         ("FONTNAME",      (0,0),(-1,0),  "Helvetica-Bold"),
         ("FONTNAME",      (0,1),(-1,-1), "Helvetica"),
-        ("FONTSIZE",      (0,0),(-1,-1), 7),
-        ("TOPPADDING",    (0,0),(-1,-1), 3),
-        ("BOTTOMPADDING", (0,0),(-1,-1), 3),
-        ("LEFTPADDING",   (0,0),(-1,-1), 3),
+        ("FONTSIZE",      (0,0),(-1,-1), 6),
+        ("TOPPADDING",    (0,0),(-1,-1), 2),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 2),
+        ("LEFTPADDING",   (0,0),(-1,-1), 2),
         ("GRID",          (0,0),(-1,-1), 0.25, MID_GREY),
         ("ROWBACKGROUNDS",(0,1),(-1,-1), [WHITE, LIGHT_GREY]),
         ("ALIGN",         (4,0),(-1,-1), "CENTER"),
@@ -315,7 +351,7 @@ def render_view_a(
     if flag_items:
         elements.append(Paragraph("Flags — Top 10", styles["sub"]))
         for symbol, flags in flag_items:
-            elements.append(Paragraph(f"<b>{symbol}</b>", styles["flag"]))
+            elements.append(_ticker_link(symbol, "flag"))
             for f in flags:
                 elements.append(Paragraph(f"  {f}", styles["flag"]))
             elements.append(Spacer(1, 0.04 * inch))
@@ -406,8 +442,8 @@ def render_view_c(
                 ei = s.earnings
                 days_str = str(ei.days_until) if ei.days_until is not None else "—"
                 cal_data.append([
-                    s.symbol,
-                    s.name[:28],
+                    _ticker_link(s.symbol),
+                    _wrap_cell(s.name),
                     ei.next_earnings_date.strftime("%b %d, %Y") if ei.next_earnings_date else "Unknown",
                     days_str,
                     ei.urgency.capitalize(),
@@ -418,10 +454,10 @@ def render_view_c(
                 ("TEXTCOLOR",     (0,0),(-1,0),  WHITE),
                 ("FONTNAME",      (0,0),(-1,0),  "Helvetica-Bold"),
                 ("FONTNAME",      (0,1),(-1,-1), "Helvetica"),
-                ("FONTSIZE",      (0,0),(-1,-1), 8),
-                ("TOPPADDING",    (0,0),(-1,-1), 3),
-                ("BOTTOMPADDING", (0,0),(-1,-1), 3),
-                ("LEFTPADDING",   (0,0),(-1,-1), 5),
+                ("FONTSIZE",      (0,0),(-1,-1), 6),
+                ("TOPPADDING",    (0,0),(-1,-1), 2),
+                ("BOTTOMPADDING", (0,0),(-1,-1), 2),
+                ("LEFTPADDING",   (0,0),(-1,-1), 4),
                 ("GRID",          (0,0),(-1,-1), 0.25, MID_GREY),
                 ("ROWBACKGROUNDS",(0,1),(-1,-1), [WHITE, LIGHT_GREY]),
             ]))
@@ -448,10 +484,14 @@ def render_view_c(
 
     if skipped_symbols:
         elements.append(Paragraph("Holdings Not in Scored Universe", styles["sub"]))
+        links = []
+        for sym in sorted(skipped_symbols):
+            url = f"{YAHOO_QUOTE_URL}/{quote(sym.strip(), safe='.')}"
+            esc = xml.sax.saxutils.escape(sym)
+            links.append(f'<a href="{url}" color="#1A5FAF">{esc}</a>')
         elements.append(Paragraph(
             "These tickers from your portfolio were not scored (failed quality gate or "
-            "not in S&P 500 universe). Review manually: " +
-            ", ".join(sorted(skipped_symbols)),
+            "not in S&P 500 universe). Review manually: " + ", ".join(links),
             styles["body"]
         ))
 
@@ -462,14 +502,17 @@ def _holding_card(styles, s: FundamentalScore) -> list:
     """Detailed card for a single holding in View C."""
     elements = []
 
-    # Header bar
+    # Header bar (wrap long company names; symbol is link to Yahoo Finance)
     header_colour = _score_colour(s.composite_score)
+    name_escaped = xml.sax.saxutils.escape(s.name)
+    symbol_url = f"{YAHOO_QUOTE_URL}/{quote(s.symbol.strip(), safe='.')}"
+    symbol_escaped = xml.sax.saxutils.escape(s.symbol)
     header_data = [[
-        Paragraph(f"<b>{s.symbol}</b> — {s.name}", ParagraphStyle("CH",
-            parent=styles["body"], fontSize=10, fontName="Helvetica-Bold", textColor=WHITE)),
+        Paragraph(f'<b><a href="{symbol_url}" color="white">{symbol_escaped}</a></b> — {name_escaped}', ParagraphStyle("CH",
+            parent=styles["body"], fontSize=8, leading=10, fontName="Helvetica-Bold", textColor=WHITE, wordWrap="CJK")),
         Paragraph(
             f"Composite: <b>{s.composite_score:.0f}</b> ({_score_label(s.composite_score)})",
-            ParagraphStyle("CS", parent=styles["body"], fontSize=9,
+            ParagraphStyle("CS", parent=styles["body"], fontSize=8,
                            fontName="Helvetica-Bold", textColor=WHITE, alignment=2)
         ),
     ]]
@@ -504,22 +547,22 @@ def _holding_card(styles, s: FundamentalScore) -> list:
     ]))
     elements.append(sbt)
 
-    # Key metrics row
-    metrics_data = [[
-        f"Price: {_na(s.current_price, '.2f', '$')}",
-        f"Mkt Cap: {'${:.0f}B'.format(s.market_cap_b) if s.market_cap_b else 'n/a'}",
-        f"Fwd P/E: {_na(s.forward_pe, '.1f')}",
-        f"Div Yield: {_pct(s.div_yield_pct, '.2f').replace('+','')}",
-        f"Rev Growth: {_pct(s.revenue_growth_pct)}",
-        f"D/E: {_na(s.debt_to_equity, '.0f')}%",
-        f"vs 52w High: {_pct(s.pct_from_52w_high)}",
-    ]]
-    mt = Table(metrics_data, colWidths=[1.0*inch, 0.85*inch, 0.75*inch, 0.85*inch, 0.85*inch, 0.7*inch, 1.0*inch])
+    # Key metrics row (wrap so long values fit)
+    metrics_cells = [
+        _wrap_cell(f"Price: {_na(s.current_price, '.2f', '$')}"),
+        _wrap_cell(f"Mkt Cap: {'${:.0f}B'.format(s.market_cap_b) if s.market_cap_b else 'n/a'}"),
+        _wrap_cell(f"Fwd P/E: {_na(s.forward_pe, '.1f')}"),
+        _wrap_cell(f"Div Yield: {_pct(s.div_yield_pct, '.2f').replace('+','')}"),
+        _wrap_cell(f"Rev Growth: {_pct(s.revenue_growth_pct)}"),
+        _wrap_cell(f"D/E: {_na(s.debt_to_equity, '.0f')}%"),
+        _wrap_cell(f"vs 52w High: {_pct(s.pct_from_52w_high)}"),
+    ]
+    mt = Table([metrics_cells], colWidths=[1.0*inch, 0.85*inch, 0.75*inch, 0.85*inch, 0.85*inch, 0.7*inch, 1.0*inch])
     mt.setStyle(TableStyle([
         ("FONTNAME",      (0,0),(-1,-1), "Helvetica"),
-        ("FONTSIZE",      (0,0),(-1,-1), 7),
-        ("TOPPADDING",    (0,0),(-1,-1), 3),
-        ("BOTTOMPADDING", (0,0),(-1,-1), 3),
+        ("FONTSIZE",      (0,0),(-1,-1), 6),
+        ("TOPPADDING",    (0,0),(-1,-1), 2),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 2),
         ("LEFTPADDING",   (0,0),(-1,-1), 4),
         ("BACKGROUND",    (0,0),(-1,-1), LIGHT_GREY),
         ("GRID",          (0,0),(-1,-1), 0.25, MID_GREY),

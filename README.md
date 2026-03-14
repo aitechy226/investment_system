@@ -85,6 +85,28 @@ Runtime: ~3-5 minutes (parallel fetching ~500 tickers).
 
 ---
 
+## How we guarantee live data
+
+**Rule: Every number in these reports comes from live market data pulled from the API at run time. There are no made-up or fallback numbers.**
+
+- **No report without live data**  
+  If the system cannot get real-time data (prices, fundamentals, macro, sector, etc.), it **exits with an error** and **does not generate a PDF**. You will never see a report built from stale or default data.
+
+- **Where we fail explicitly**
+  - **Portfolio / Weekly Pulse:** `portfolio.py` and `macro.py` raise `LiveDataUnavailableError` when batch price fetch fails, when any position has no price/sector, or when macro/sector config or fetch fails. `main.py` catches it, prints the message (and backend cause), and exits with code 1.
+  - **Fundamentals report:** `recommendations.py` raises `LiveDataRequiredError` when the S&P 500 universe or per-ticker data cannot be fetched. `fundamental_bridge.py` raises `LiveDataUnavailableError` when scoring fails for any ticker. `run_fundamentals.py` catches these and exits with a clear error; no PDF is written.
+
+- **No silent fallbacks**  
+  We do **not** use hardcoded ticker lists, default prices, or “skip and continue” when a fetch fails. Every data path either succeeds with live data or fails with an explicit error message (including backend error details for diagnosis).
+
+- **How you can verify**
+  - Run `python diagnose.py` from the repo root: it checks portfolio, macro config, and live data using your actual portfolio and config.
+  - When a run fails, read the printed error: it will say that live data could not be retrieved and will include which ticker/source failed and, where applicable, the underlying API/backend error.
+
+This behaviour is enforced by a **system-wide rule** (see `.cursor/rules/live-data-only.mdc`): reports must always use live market data; when live data cannot be retrieved, the program must exit with an appropriate error message.
+
+---
+
 ## Troubleshooting
 
 ### "Sector is Unknown" — report fails or has no value
