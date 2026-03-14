@@ -1,0 +1,10 @@
+ticker,shares,avg_cost,purchase_date,sector,asset_class,notes
+AAPL,50,145.20,2022-03-15,Technology,Equity,Core holding
+MSFT,30,280.50,2021-11-01,Technology,Equity,Core holding
+NVDA,25,220.00,2023-01-10,Technology,Equity,AI play
+JPM,40,135.00,2022-06-20,Financials,Equity,Banking exposure
+UNH,15,480.00,2022-09-01,Healthcare,Equity,Healthcare hedge
+XOM,60,95.00,2022-04-05,Energy,Equity,Energy inflation hedge
+AMZN,20,115.00,2023-03-01,Consumer Discretionary,Equity,E-commerce + cloud
+VTI,100,195.00,2021-06-15,Broad Market,ETF,Total market ETF
+QQQ,30,320.00,2022-01-10,Technology,ETF,Nasdaq ETF

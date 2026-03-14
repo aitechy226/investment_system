@@ -1,0 +1,57 @@
+---
+description: Coding standard — descriptive error messages and include backend errors for diagnosis
+alwaysApply: true
+---
+
+# Descriptive Error Messages (Coding Standard)
+
+All code must use **descriptive error messages** and **surface backend/original errors** so diagnosis, troubleshooting, and code fixes are straightforward.
+
+## Rules
+
+1. **Include the real backend error**
+   - When catching an exception from a library, API, or service, include it in the message: `{type(e).__name__}: {e}`.
+   - Example: `f"Backend error: {type(e).__name__}: {e}"` or `f"Failed for {ticker}. Backend error: {type(e).__name__}: {e}"`.
+
+2. **Chain the cause**
+   - Use `raise NewError("...") from e` so the original exception is attached as `__cause__`.
+   - Callers can then print or log `e.__cause__` to show the underlying error.
+
+3. **Add context**
+   - Say what failed (e.g. which ticker, which step, which file or resource).
+   - Include enough detail to reproduce or fix (paths, IDs, operation name).
+
+4. **Avoid swallowing errors**
+   - Do not use bare `except:` or `except Exception: pass` without at least logging the error.
+   - If you must handle and continue, log or store the error (type and message) for diagnosis.
+
+5. **User-facing vs internal**
+   - User-facing: keep messages clear and non-technical where appropriate, but still include a short "technical detail" or "backend error" line when useful.
+   - Internal/API code: always include exception type and full message in raised or logged errors.
+
+## Examples
+
+```python
+# Good: descriptive + backend error + chained
+try:
+    data = fetch_from_api(symbol)
+except Exception as e:
+    raise DataUnavailableError(
+        f"Live data could not be retrieved for {symbol}. "
+        f"Backend error: {type(e).__name__}: {e}."
+    ) from e
+
+# Good: per-item errors when failing on multiple items
+details = "; ".join(f"{ticker}: {err}" for ticker, err in failed)
+raise LiveDataUnavailableError(f"Per-ticker errors: {details}.")
+
+# Bad: generic message, no backend error
+except Exception as e:
+    raise MyError("Something went wrong.")  # e is lost
+```
+
+When writing or reviewing code, apply this standard so errors are descriptive and backend errors are visible.
+
+---
+
+**Reuse in other projects:** Copy this file to that project's `.cursor/rules/` with `alwaysApply: true` to enforce the same standard there.

@@ -1,0 +1,9 @@
+ticker,shares,avg_cost,purchase_date,sector,asset_class,notes
+AMZN,50,139.26,2020-01-01,Unknown,Equity,
+DELL,50,123.91,2020-01-01,Unknown,Equity,
+GTLB,40,73.66,2020-01-01,Unknown,Equity,
+MAR,10,209.00,2020-01-01,Unknown,Equity,
+MSFT,50,336.00,2020-01-01,Unknown,Equity,
+NVDA,500,122.36,2020-01-01,Unknown,Equity,
+PHM,20,96.45,2020-01-01,Unknown,Equity,
+TLX,500,9.75,2020-01-01,Unknown,Equity,

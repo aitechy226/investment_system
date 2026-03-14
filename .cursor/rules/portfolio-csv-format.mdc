@@ -1,0 +1,38 @@
+---
+description: Portfolio CSV file format and column conventions
+globs: **/portfolio*.csv, **/portfolio/**/*.csv
+alwaysApply: false
+---
+
+# Portfolio CSV Format
+
+Use this format for portfolio holdings files (e.g. `portfolio/portfolio.csv`).  
+**Directive:** The system uses live data only. Tickers and positions come from CSV (or broker export) at runtime; no hardcoded ticker lists in code.
+
+## Header (exact column order)
+
+| Column        | Type    | Example        | Notes                          |
+|---------------|---------|----------------|--------------------------------|
+| ticker        | string  | AAPL, VTI      | Stock or ETF symbol            |
+| shares        | integer | 50             | Number of shares               |
+| avg_cost      | float   | 145.20         | Average cost per share, no $   |
+| purchase_date | date    | 2022-03-15     | YYYY-MM-DD                     |
+| sector        | string  | Technology     | Sector name                    |
+| asset_class   | string  | Equity, ETF    | Equity or ETF                  |
+| notes         | string  | Core holding   | Free text                      |
+
+## Conventions
+
+- CSV delimiter: comma. Quote fields that contain commas.
+- One header row, then one data row per position.
+- No blank rows between data rows.
+- Dates always `YYYY-MM-DD`. Numbers without currency symbols.
+
+## Example row
+
+```csv
+ticker,shares,avg_cost,purchase_date,sector,asset_class,notes
+AAPL,50,145.20,2022-03-15,Technology,Equity,Core holding
+```
+
+When reading or writing portfolio CSV in this project, preserve this column order and types.

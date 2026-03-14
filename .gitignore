@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Secrets (keep .env.example if you add one)
+.env
+.env.local
+
+# Generated PDF reports (optional: remove these lines to commit PDFs)
+portfolio/reports/*.pdf
+research/reports/*.pdf
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store

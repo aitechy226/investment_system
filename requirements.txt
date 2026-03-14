@@ -1,0 +1,24 @@
+# Shared dependencies for both portfolio/ and research/
+
+# LangChain + LangGraph
+langgraph>=0.2.0
+langchain-core>=0.2.0
+langchain-openai>=0.1.0    # used for BOTH Ollama and Grok (OpenAI-compatible API)
+
+# Data
+yfinance>=0.2.40
+pandas>=2.0.0
+requests>=2.31.0
+certifi>=2024.0.0
+
+# PDF generation
+reportlab>=4.0.0
+
+# ── Notes ─────────────────────────────────────
+# Ollama itself is NOT a Python package — install it separately:
+#   https://ollama.com/download
+#   Then: ollama pull llama3.2:latest
+#
+# langchain-openai is used for both backends because Ollama exposes
+# an OpenAI-compatible /v1 endpoint, so no separate Ollama SDK needed.
+# API keys (e.g. Grok/xAI) go in environment variables, not in this file.

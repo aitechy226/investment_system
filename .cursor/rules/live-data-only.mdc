@@ -1,0 +1,12 @@
+---
+description: Live data rule — fail when data cannot be retrieved; no hardcoded tickers or default lists
+alwaysApply: true
+---
+
+# Live data rule (do not bypass)
+
+When live data could not be retrieved, **fail and say so**. Do **not** use hardcoded tickers or default lists.
+
+- **Enforced in code**: Raise `LiveDataUnavailableError` (portfolio) or `LiveDataRequiredError` (research). Do not return empty lists, silent fallbacks, or default symbol lists.
+- **No exceptions**: Every program and agent must follow this. No "skip when unavailable" or "use default when fetch fails".
+- **Message**: Use the canonical message: "Live data could not be retrieved. Do not use hardcoded tickers or default lists." (optionally append which ticker/source failed).
