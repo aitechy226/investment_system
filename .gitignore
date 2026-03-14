@@ -12,13 +12,19 @@ build/
 .env
 .env.local
 
-# Private portfolio CSVs — never commit or upload
+# Private portfolio CSVs and watchlists — never commit or upload
 SriPort.csv
 SudhaPort.csv
+SriWatchList.csv
+SudhaWatchList.csv
 portfolio/SriPort.csv
 portfolio/SudhaPort.csv
+portfolio/SriWatchList.csv
+portfolio/SudhaWatchList.csv
 **/SriPort.csv
 **/SudhaPort.csv
+**/SriWatchList.csv
+**/SudhaWatchList.csv
 
 # Generated PDF reports (optional: remove these lines to commit PDFs)
 portfolio/reports/*.pdf
