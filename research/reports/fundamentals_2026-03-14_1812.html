@@ -1,0 +1,2059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fundamental Scoring Report — 2026-03-14_1812</title>
+<style>
+:root {
+  --bg: #ffffff; --bg-1: #f8f9fa; --bg-2: #f0f2f5;
+  --border: #dee2e6; --border-light: #e9ecef;
+  --dark-blue: #0D2137; --mid-blue: #1A4A72; --light-blue: #EAF2FB;
+  --green: #1A7A4A; --green-bg: #e8f5ee;
+  --amber: #CC7700; --amber-bg: #fff8e8;
+  --red: #B22222;   --red-bg: #fff0f0;
+  --grey: #6c757d;  --light-grey: #f5f5f5;
+  --text: #212529;  --text-muted: #6c757d;
+  --mono: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+       font-size: 14px; color: var(--text); background: var(--bg); line-height: 1.5; }
+.page-wrap { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem 3rem; }
+
+/* Header */
+.report-header { background: var(--dark-blue); color: white; padding: 2rem 1.5rem; margin-bottom: 2rem; }
+.report-header h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.3rem; }
+.report-header .meta { font-size: 0.8rem; color: #AABBCC; }
+
+/* Nav */
+.section-nav { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem;
+               padding: 1rem; background: var(--bg-1); border: 1px solid var(--border);
+               border-radius: 6px; }
+.nav-link { padding: 0.4rem 0.9rem; border-radius: 4px; text-decoration: none;
+            font-size: 0.8rem; color: var(--mid-blue); border: 1px solid var(--border);
+            transition: all 0.1s; }
+.nav-link:hover { background: var(--light-blue); border-color: var(--mid-blue); }
+
+/* Section headings */
+.section { margin-bottom: 3rem; }
+.section-title { font-size: 1.1rem; font-weight: 700; color: var(--dark-blue);
+                 border-bottom: 3px solid var(--mid-blue); padding-bottom: 0.5rem;
+                 margin-bottom: 1rem; display: flex; align-items: baseline; gap: 0.75rem; }
+.section-title .count { font-size: 0.75rem; font-weight: 400; color: var(--text-muted); }
+.subsection-title { font-size: 0.95rem; font-weight: 600; color: var(--mid-blue);
+                    margin: 1.5rem 0 0.5rem; border-left: 3px solid var(--mid-blue);
+                    padding-left: 0.6rem; }
+
+/* Legend */
+.legend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+               gap: 0.5rem; margin-bottom: 1rem; }
+.legend-item { padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.78rem; }
+.legend-strong { background: var(--green-bg); color: var(--green); border: 1px solid #b7ddc8; }
+.legend-good   { background: #eaf2fb;          color: var(--mid-blue); border: 1px solid #b8d4ec; }
+.legend-fair   { background: var(--amber-bg);  color: var(--amber); border: 1px solid #f0d090; }
+.legend-weak   { background: #fef9e7;          color: #996600; border: 1px solid #eed890; }
+.legend-poor   { background: var(--red-bg);    color: var(--red); border: 1px solid #e8b4b4; }
+.legend-label  { font-weight: 600; margin-bottom: 0.15rem; }
+.legend-range  { font-family: var(--mono); font-size: 0.72rem; }
+
+/* Scores table */
+.table-wrap { overflow-x: auto; }
+.scores-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.scores-table th { background: var(--dark-blue); color: white; padding: 0.5rem 0.6rem;
+                   text-align: left; font-weight: 600; white-space: nowrap; }
+.scores-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+.scores-table tr:nth-child(even) td { background: var(--bg-1); }
+.scores-table tr:hover td { background: var(--light-blue); }
+.rank { font-family: var(--mono); color: var(--text-muted); font-size: 0.75rem; width: 32px; }
+.ticker-link { font-family: var(--mono); font-weight: 600; color: var(--mid-blue);
+               text-decoration: none; font-size: 0.88rem; }
+.ticker-link:hover { text-decoration: underline; }
+.name-cell { color: var(--text); max-width: 200px; white-space: nowrap;
+             overflow: hidden; text-overflow: ellipsis; }
+.sector-cell { color: var(--text-muted); font-size: 0.75rem; white-space: nowrap; }
+.metric-cell { font-family: var(--mono); font-size: 0.8rem; text-align: right; }
+.metric-cell.pos { color: var(--green); }
+.metric-cell.neg { color: var(--red); }
+.score-cell { font-family: var(--mono); text-align: center; font-size: 0.85rem; white-space: nowrap; }
+.score-cell .score-word { display: block; font-size: 0.6rem; font-family: sans-serif;
+                           text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
+.score-strong { color: var(--green); }
+.score-fair   { color: var(--amber); }
+.score-weak   { color: var(--red); }
+
+/* Badges */
+.earn-badge, .stale-badge { font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 3px;
+                             margin-left: 0.3rem; white-space: nowrap; }
+.earn-critical { background: var(--red-bg);    color: var(--red);   border: 1px solid #e8b4b4; }
+.earn-warning  { background: var(--amber-bg);  color: var(--amber); border: 1px solid #f0d090; }
+.earn-watch    { background: #eaf2fb;          color: var(--mid-blue); border: 1px solid #b8d4ec; }
+.earn-clear    { background: var(--green-bg);  color: var(--green); border: 1px solid #b7ddc8; }
+.stale, .stale-very { background: var(--amber-bg); color: var(--amber); border: 1px solid #f0d090; }
+.stale-very { background: var(--red-bg); color: var(--red); }
+
+/* Holding cards */
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr)); gap: 1rem; }
+.holding-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+                background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.card-header { display: flex; justify-content: space-between; align-items: flex-start;
+               padding: 0.85rem 1rem; background: var(--bg-1); border-bottom: 1px solid var(--border); }
+.card-ticker { font-family: var(--mono); font-size: 1.1rem; font-weight: 700;
+               color: var(--mid-blue); text-decoration: none; display: block; }
+.card-ticker:hover { text-decoration: underline; }
+.card-name   { font-size: 0.8rem; color: var(--text); display: block; margin: 0.1rem 0; }
+.card-sector { font-size: 0.72rem; color: var(--text-muted); display: block; }
+.card-composite { text-align: center; min-width: 64px; }
+.comp-score { font-family: var(--mono); font-size: 1.8rem; font-weight: 700;
+              line-height: 1; display: block; }
+.comp-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em;
+              display: block; margin-top: 2px; }
+.card-body  { display: flex; gap: 1rem; padding: 0.85rem 1rem; }
+.card-modules { flex: 1.5; display: flex; flex-direction: column; gap: 0.4rem; }
+.card-metrics { flex: 1; display: flex; flex-direction: column; gap: 0.3rem; }
+.module-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; }
+.module-name { width: 68px; color: var(--text-muted); flex-shrink: 0; }
+.module-bar  { flex: 1; height: 5px; background: var(--bg-2); border-radius: 3px; overflow: hidden; }
+.module-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+.module-fill.score-strong { background: var(--green); }
+.module-fill.score-fair   { background: var(--amber); }
+.module-fill.score-weak   { background: var(--red);   }
+.module-score { width: 80px; font-family: var(--mono); font-size: 0.75rem; text-align: right;
+                flex-shrink: 0; }
+.module-score em { font-style: normal; font-size: 0.62rem; color: var(--text-muted); margin-left: 2px; }
+.kv { display: flex; justify-content: space-between; font-size: 0.75rem;
+      border-bottom: 1px solid var(--border-light); padding: 0.15rem 0; }
+.kv-label { color: var(--text-muted); }
+.kv-value  { font-family: var(--mono); font-weight: 500; }
+.flags { padding: 0.6rem 1rem; background: var(--bg-1); border-top: 1px solid var(--border);
+         list-style: none; display: flex; flex-direction: column; gap: 0.2rem; }
+.flags li { font-size: 0.75rem; color: var(--text); }
+
+/* Skipped */
+.skipped-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+.skipped-tag  { font-family: var(--mono); font-size: 0.75rem; padding: 0.2rem 0.5rem;
+                background: var(--bg-2); border: 1px solid var(--border); border-radius: 3px;
+                color: var(--text-muted); }
+
+/* Disclaimer */
+.disclaimer { margin-top: 3rem; padding: 1rem; background: var(--bg-1);
+              border: 1px solid var(--border); border-radius: 6px;
+              font-size: 0.72rem; color: var(--text-muted); line-height: 1.6; }
+
+@media print {
+  .section-nav { display: none; }
+  .holding-card { break-inside: avoid; }
+  .section { break-before: page; }
+}
+@media (max-width: 768px) {
+  .cards-grid { grid-template-columns: 1fr; }
+  .card-body  { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<div class="report-header">
+  <h1>Fundamental Scoring Report</h1>
+  <div class="meta">S&amp;P 500 Universe · Generated Saturday, March 14 2026  18:12 · 25 ideas in View A</div>
+</div>
+
+<div class="page-wrap">
+
+  <nav class="section-nav">
+    <a href="#view-a" class="nav-link">View A — Top Composite</a>
+    <a href="#view-b-quality"  class="nav-link">View B — Quality</a>
+    <a href="#view-b-value"    class="nav-link">View B — Value</a>
+    <a href="#view-b-momentum" class="nav-link">View B — Momentum</a>
+    <a href="#view-b-income"   class="nav-link">View B — Income</a>
+    <a href="#view-c" class="nav-link">View C — Watchlist</a></nav>
+
+  <section class="section" id="legend">
+    <h2 class="section-title">Score Legend</h2>
+    
+    <div class="legend-grid">
+      <div class="legend-item legend-strong"><div class="legend-label">Strong</div><div class="legend-range">75 – 100</div></div>
+      <div class="legend-item legend-good">  <div class="legend-label">Good</div>  <div class="legend-range">60 – 74</div></div>
+      <div class="legend-item legend-fair">  <div class="legend-label">Fair</div>  <div class="legend-range">45 – 59</div></div>
+      <div class="legend-item legend-weak">  <div class="legend-label">Weak</div>  <div class="legend-range">30 – 44</div></div>
+      <div class="legend-item legend-poor">  <div class="legend-label">Poor</div>  <div class="legend-range">0 – 29</div></div>
+    </div>
+    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:0.5rem;">
+      Scores are relative within the S&amp;P 500 universe using sector-calibrated thresholds.
+      Composite = Quality 30% · Value 25% · Momentum 25% · Income 20%.
+      Ticker symbols link to Yahoo Finance.
+    </p>
+  </section>
+
+  <section class="section" id="view-a">
+    <h2 class="section-title">
+      View A — Top Composite Scores
+      <span class="count">25 ideas</span>
+    </h2>
+    
+    <div class="table-wrap">
+      <table class="scores-table">
+        <thead><tr>
+          <th>Rank</th>
+          <th>Ticker</th><th>Company</th><th>Sector</th>
+          <th>Composite</th><th>Quality</th><th>Value</th><th>Momentum</th><th>Income</th>
+          <th>Fwd P/E</th><th>Rev Growth</th>
+        </tr></thead>
+        <tbody><tr>
+      <td class="rank">1</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/EIX" target="_blank" class="ticker-link">EIX</a>
+        
+      </td>
+      <td class="name-cell">Edison International</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-strong"><strong>82</strong><span class="score-word">Strong</span></td>
+      <td class="score-cell score-strong">83</td>
+      <td class="score-cell score-strong">91</td>
+      <td class="score-cell score-strong">81</td>
+      <td class="score-cell score-strong">73</td>
+      <td class="metric-cell">11.0x</td>
+      <td class="metric-cell pos">+30.8%</td>
+    </tr><tr>
+      <td class="rank">2</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/CTRA" target="_blank" class="ticker-link">CTRA</a>
+        
+      </td>
+      <td class="name-cell">Coterra Energy Inc.</td>
+      <td class="sector-cell">Energy</td>
+      <td class="score-cell score-strong"><strong>73</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">86</td>
+      <td class="score-cell score-fair">58</td>
+      <td class="score-cell score-strong">84</td>
+      <td class="score-cell score-fair">60</td>
+      <td class="metric-cell">11.8x</td>
+      <td class="metric-cell pos">+23.4%</td>
+    </tr><tr>
+      <td class="rank">3</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/CF" target="_blank" class="ticker-link">CF</a>
+        
+      </td>
+      <td class="name-cell">CF Industries Holdings, Inc.</td>
+      <td class="sector-cell">Basic Materials</td>
+      <td class="score-cell score-strong"><strong>72</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">92</td>
+      <td class="score-cell score-fair">52</td>
+      <td class="score-cell score-strong">93</td>
+      <td class="score-cell score-weak">40</td>
+      <td class="metric-cell">17.6x</td>
+      <td class="metric-cell pos">+22.8%</td>
+    </tr><tr>
+      <td class="rank">4</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/APA" target="_blank" class="ticker-link">APA</a>
+        
+      </td>
+      <td class="name-cell">APA Corporation</td>
+      <td class="sector-cell">Energy</td>
+      <td class="score-cell score-strong"><strong>72</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">64</td>
+      <td class="score-cell score-strong">80</td>
+      <td class="score-cell score-strong">95</td>
+      <td class="score-cell score-weak">44</td>
+      <td class="metric-cell">13.6x</td>
+      <td class="metric-cell neg">-28.0%</td>
+    </tr><tr>
+      <td class="rank">5</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/NEM" target="_blank" class="ticker-link">NEM</a>
+        
+      </td>
+      <td class="name-cell">Newmont Corporation</td>
+      <td class="sector-cell">Basic Materials</td>
+      <td class="score-cell score-strong"><strong>71</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">89</td>
+      <td class="score-cell score-strong">72</td>
+      <td class="score-cell score-strong">71</td>
+      <td class="score-cell score-weak">44</td>
+      <td class="metric-cell">9.7x</td>
+      <td class="metric-cell pos">+20.6%</td>
+    </tr><tr>
+      <td class="rank">6</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/DELL" target="_blank" class="ticker-link">DELL</a>
+        
+      </td>
+      <td class="name-cell">Dell Technologies Inc.</td>
+      <td class="sector-cell">Technology</td>
+      <td class="score-cell score-strong"><strong>70</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">54</td>
+      <td class="score-cell score-strong">92</td>
+      <td class="score-cell score-strong">81</td>
+      <td class="score-cell score-fair">55</td>
+      <td class="metric-cell">10.5x</td>
+      <td class="metric-cell pos">+39.5%</td>
+    </tr><tr>
+      <td class="rank">7</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/DVN" target="_blank" class="ticker-link">DVN</a>
+        
+      </td>
+      <td class="name-cell">Devon Energy Corporation</td>
+      <td class="sector-cell">Energy</td>
+      <td class="score-cell score-fair"><strong>70</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">65</td>
+      <td class="score-cell score-fair">69</td>
+      <td class="score-cell score-strong">89</td>
+      <td class="score-cell score-fair">52</td>
+      <td class="metric-cell">10.1x</td>
+      <td class="metric-cell neg">-12.1%</td>
+    </tr><tr>
+      <td class="rank">8</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/BMY" target="_blank" class="ticker-link">BMY</a>
+        
+      </td>
+      <td class="name-cell">Bristol-Myers Squibb Company</td>
+      <td class="sector-cell">Healthcare</td>
+      <td class="score-cell score-fair"><strong>69</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">64</td>
+      <td class="score-cell score-strong">75</td>
+      <td class="score-cell score-strong">71</td>
+      <td class="score-cell score-fair">65</td>
+      <td class="metric-cell">9.6x</td>
+      <td class="metric-cell pos">+1.3%</td>
+    </tr><tr>
+      <td class="rank">9</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/D" target="_blank" class="ticker-link">D</a>
+        
+      </td>
+      <td class="name-cell">Dominion Energy, Inc.</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>68</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">76</td>
+      <td class="score-cell score-fair">56</td>
+      <td class="score-cell score-fair">60</td>
+      <td class="score-cell score-strong">82</td>
+      <td class="metric-cell">16.5x</td>
+      <td class="metric-cell pos">+20.4%</td>
+    </tr><tr>
+      <td class="rank">10</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/ED" target="_blank" class="ticker-link">ED</a>
+        
+      </td>
+      <td class="name-cell">Consolidated Edison, Inc.</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>68</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">56</td>
+      <td class="score-cell score-fair">63</td>
+      <td class="score-cell score-strong">72</td>
+      <td class="score-cell score-strong">88</td>
+      <td class="metric-cell">17.7x</td>
+      <td class="metric-cell pos">+8.9%</td>
+    </tr><tr>
+      <td class="rank">11</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/DUK" target="_blank" class="ticker-link">DUK</a>
+        
+      </td>
+      <td class="name-cell">Duke Energy Corporation</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>68</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">61</td>
+      <td class="score-cell score-fair">56</td>
+      <td class="score-cell score-fair">70</td>
+      <td class="score-cell score-strong">92</td>
+      <td class="metric-cell">18.6x</td>
+      <td class="metric-cell pos">+8.0%</td>
+    </tr><tr>
+      <td class="rank">12</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/INCY" target="_blank" class="ticker-link">INCY</a>
+        
+      </td>
+      <td class="name-cell">Incyte Corporation</td>
+      <td class="sector-cell">Healthcare</td>
+      <td class="score-cell score-fair"><strong>68</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">93</td>
+      <td class="score-cell score-strong">70</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="metric-cell">10.7x</td>
+      <td class="metric-cell pos">+27.8%</td>
+    </tr><tr>
+      <td class="rank">13</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/BIIB" target="_blank" class="ticker-link">BIIB</a>
+        
+      </td>
+      <td class="name-cell">Biogen Inc.</td>
+      <td class="sector-cell">Healthcare</td>
+      <td class="score-cell score-fair"><strong>67</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">54</td>
+      <td class="score-cell score-strong">96</td>
+      <td class="score-cell score-fair">67</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="metric-cell">11.2x</td>
+      <td class="metric-cell neg">-7.1%</td>
+    </tr><tr>
+      <td class="rank">14</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/EVRG" target="_blank" class="ticker-link">EVRG</a>
+        
+      </td>
+      <td class="name-cell">Evergy, Inc.</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>67</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">63</td>
+      <td class="score-cell score-fair">56</td>
+      <td class="score-cell score-fair">69</td>
+      <td class="score-cell score-strong">84</td>
+      <td class="metric-cell">18.1x</td>
+      <td class="metric-cell pos">+6.6%</td>
+    </tr><tr>
+      <td class="rank">15</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/GILD" target="_blank" class="ticker-link">GILD</a>
+        
+      </td>
+      <td class="name-cell">Gilead Sciences, Inc.</td>
+      <td class="sector-cell">Healthcare</td>
+      <td class="score-cell score-fair"><strong>67</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">79</td>
+      <td class="score-cell score-fair">53</td>
+      <td class="score-cell score-strong">72</td>
+      <td class="score-cell score-fair">61</td>
+      <td class="metric-cell">15.1x</td>
+      <td class="metric-cell pos">+4.7%</td>
+    </tr><tr>
+      <td class="rank">16</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/JNJ" target="_blank" class="ticker-link">JNJ</a>
+        
+      </td>
+      <td class="name-cell">Johnson &amp; Johnson</td>
+      <td class="sector-cell">Healthcare</td>
+      <td class="score-cell score-fair"><strong>66</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">86</td>
+      <td class="score-cell score-weak">38</td>
+      <td class="score-cell score-strong">80</td>
+      <td class="score-cell score-fair">55</td>
+      <td class="metric-cell">19.2x</td>
+      <td class="metric-cell pos">+9.1%</td>
+    </tr><tr>
+      <td class="rank">17</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/AEP" target="_blank" class="ticker-link">AEP</a>
+        
+      </td>
+      <td class="name-cell">American Electric Power Company,</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>66</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">61</td>
+      <td class="score-cell score-weak">46</td>
+      <td class="score-cell score-strong">76</td>
+      <td class="score-cell score-strong">86</td>
+      <td class="metric-cell">19.5x</td>
+      <td class="metric-cell pos">+13.2%</td>
+    </tr><tr>
+      <td class="rank">18</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/MRK" target="_blank" class="ticker-link">MRK</a>
+        
+      </td>
+      <td class="name-cell">Merck &amp; Co., Inc.</td>
+      <td class="sector-cell">Healthcare</td>
+      <td class="score-cell score-fair"><strong>66</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">68</td>
+      <td class="score-cell score-fair">62</td>
+      <td class="score-cell score-strong">75</td>
+      <td class="score-cell score-fair">56</td>
+      <td class="metric-cell">11.9x</td>
+      <td class="metric-cell pos">+5.0%</td>
+    </tr><tr>
+      <td class="rank">19</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/PPL" target="_blank" class="ticker-link">PPL</a>
+        
+      </td>
+      <td class="name-cell">PPL Corporation</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>66</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">60</td>
+      <td class="score-cell score-fair">53</td>
+      <td class="score-cell score-fair">65</td>
+      <td class="score-cell score-strong">90</td>
+      <td class="metric-cell">18.2x</td>
+      <td class="metric-cell pos">+2.8%</td>
+    </tr><tr>
+      <td class="rank">20</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/NI" target="_blank" class="ticker-link">NI</a>
+        
+      </td>
+      <td class="name-cell">NiSource Inc.</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>65</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">71</td>
+      <td class="score-cell score-weak">38</td>
+      <td class="score-cell score-strong">71</td>
+      <td class="score-cell score-strong">84</td>
+      <td class="metric-cell">21.4x</td>
+      <td class="metric-cell pos">+19.8%</td>
+    </tr><tr>
+      <td class="rank">21</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/ATO" target="_blank" class="ticker-link">ATO</a>
+        
+      </td>
+      <td class="name-cell">Atmos Energy Corporation</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>65</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">83</td>
+      <td class="score-cell score-weak">31</td>
+      <td class="score-cell score-strong">73</td>
+      <td class="score-cell score-strong">71</td>
+      <td class="metric-cell">21.3x</td>
+      <td class="metric-cell pos">+14.2%</td>
+    </tr><tr>
+      <td class="rank">22</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/MTCH" target="_blank" class="ticker-link">MTCH</a>
+        
+      </td>
+      <td class="name-cell">Match Group, Inc.</td>
+      <td class="sector-cell">Communication Services</td>
+      <td class="score-cell score-fair"><strong>65</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">75</td>
+      <td class="score-cell score-strong">97</td>
+      <td class="score-cell score-weak">41</td>
+      <td class="score-cell score-weak">41</td>
+      <td class="metric-cell">7.6x</td>
+      <td class="metric-cell pos">+2.1%</td>
+    </tr><tr>
+      <td class="rank">23</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/ABBV" target="_blank" class="ticker-link">ABBV</a>
+        
+      </td>
+      <td class="name-cell">AbbVie Inc.</td>
+      <td class="sector-cell">Healthcare</td>
+      <td class="score-cell score-fair"><strong>65</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">73</td>
+      <td class="score-cell score-strong">70</td>
+      <td class="score-cell score-fair">53</td>
+      <td class="score-cell score-fair">59</td>
+      <td class="metric-cell">13.6x</td>
+      <td class="metric-cell pos">+10.0%</td>
+    </tr><tr>
+      <td class="rank">24</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/ES" target="_blank" class="ticker-link">ES</a>
+        
+      </td>
+      <td class="name-cell">Eversource Energy</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>64</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">69</td>
+      <td class="score-cell score-fair">56</td>
+      <td class="score-cell score-fair">63</td>
+      <td class="score-cell score-fair">69</td>
+      <td class="metric-cell">14.1x</td>
+      <td class="metric-cell pos">+13.4%</td>
+    </tr><tr>
+      <td class="rank">25</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/PFE" target="_blank" class="ticker-link">PFE</a>
+        
+      </td>
+      <td class="name-cell">Pfizer Inc.</td>
+      <td class="sector-cell">Healthcare</td>
+      <td class="score-cell score-fair"><strong>64</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">54</td>
+      <td class="score-cell score-strong">96</td>
+      <td class="score-cell score-fair">60</td>
+      <td class="score-cell score-weak">46</td>
+      <td class="metric-cell">9.4x</td>
+      <td class="metric-cell neg">-1.2%</td>
+    </tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section" id="view-b">
+    <h2 class="section-title">View B — By Strategy</h2>
+    
+        <div id="view-b-quality">
+          <h3 class="subsection-title">Quality Growth Leaders</h3>
+          <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem;">Highest Quality Growth scores — profitable, growing businesses with strong balance sheets</p>
+          
+    <div class="table-wrap">
+      <table class="scores-table">
+        <thead><tr>
+          <th>Rank</th>
+          <th>Ticker</th><th>Company</th><th>Sector</th>
+          <th>Composite</th><th>Quality</th><th>Value</th><th>Momentum</th><th>Income</th>
+          <th>Fwd P/E</th><th>Rev Growth</th>
+        </tr></thead>
+        <tbody><tr>
+      <td class="rank">1</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/MA" target="_blank" class="ticker-link">MA</a>
+        
+      </td>
+      <td class="name-cell">Mastercard Incorporated</td>
+      <td class="sector-cell">Financial Services</td>
+      <td class="score-cell score-weak"><strong>46</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-strong">100</td>
+      <td class="score-cell score-weak">9</td>
+      <td class="score-cell score-weak">33</td>
+      <td class="score-cell score-weak">28</td>
+      <td class="metric-cell">22.0x</td>
+      <td class="metric-cell pos">+17.6%</td>
+    </tr><tr>
+      <td class="rank">2</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/SPG" target="_blank" class="ticker-link">SPG</a>
+        
+      </td>
+      <td class="name-cell">Simon Property Group, Inc.</td>
+      <td class="sector-cell">Real Estate</td>
+      <td class="score-cell score-fair"><strong>62</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">100</td>
+      <td class="score-cell score-weak">17</td>
+      <td class="score-cell score-fair">56</td>
+      <td class="score-cell score-fair">69</td>
+      <td class="metric-cell">27.0x</td>
+      <td class="metric-cell pos">+13.2%</td>
+    </tr><tr>
+      <td class="rank">3</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/MCO" target="_blank" class="ticker-link">MCO</a>
+        
+      </td>
+      <td class="name-cell">Moody's Corporation</td>
+      <td class="sector-cell">Financial Services</td>
+      <td class="score-cell score-weak"><strong>45</strong><span class="score-word">Weak</span></td>
+      <td class="score-cell score-strong">98</td>
+      <td class="score-cell score-weak">4</td>
+      <td class="score-cell score-weak">30</td>
+      <td class="score-cell score-weak">34</td>
+      <td class="metric-cell">23.0x</td>
+      <td class="metric-cell pos">+13.0%</td>
+    </tr><tr>
+      <td class="rank">4</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/MNST" target="_blank" class="ticker-link">MNST</a>
+        
+      </td>
+      <td class="name-cell">Monster Beverage Corporation</td>
+      <td class="sector-cell">Consumer Defensive</td>
+      <td class="score-cell score-fair"><strong>54</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-strong">98</td>
+      <td class="score-cell score-weak">0</td>
+      <td class="score-cell score-fair">59</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="metric-cell">30.2x</td>
+      <td class="metric-cell pos">+17.6%</td>
+    </tr><tr>
+      <td class="rank">5</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/NVDA" target="_blank" class="ticker-link">NVDA</a>
+        
+      </td>
+      <td class="name-cell">NVIDIA Corporation</td>
+      <td class="sector-cell">Technology</td>
+      <td class="score-cell score-fair"><strong>53</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-strong">97</td>
+      <td class="score-cell score-weak">32</td>
+      <td class="score-cell score-fair">53</td>
+      <td class="score-cell score-weak">15</td>
+      <td class="metric-cell">16.7x</td>
+      <td class="metric-cell pos">+73.2%</td>
+    </tr><tr>
+      <td class="rank">6</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/BKNG" target="_blank" class="ticker-link">BKNG</a>
+        
+      </td>
+      <td class="name-cell">Booking Holdings Inc.</td>
+      <td class="sector-cell">Consumer Cyclical</td>
+      <td class="score-cell score-fair"><strong>60</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">96</td>
+      <td class="score-cell score-strong">72</td>
+      <td class="score-cell score-weak">24</td>
+      <td class="score-cell score-weak">36</td>
+      <td class="metric-cell">13.5x</td>
+      <td class="metric-cell pos">+16.0%</td>
+    </tr><tr>
+      <td class="rank">7</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/SCHW" target="_blank" class="ticker-link">SCHW</a>
+        
+      </td>
+      <td class="name-cell">The Charles Schwab Corporation</td>
+      <td class="sector-cell">Financial Services</td>
+      <td class="score-cell score-fair"><strong>54</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-strong">96</td>
+      <td class="score-cell score-weak">18</td>
+      <td class="score-cell score-weak">47</td>
+      <td class="score-cell score-weak">47</td>
+      <td class="metric-cell">13.7x</td>
+      <td class="metric-cell pos">+18.9%</td>
+    </tr><tr>
+      <td class="rank">8</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/BX" target="_blank" class="ticker-link">BX</a>
+        
+      </td>
+      <td class="name-cell">Blackstone Inc.</td>
+      <td class="sector-cell">Financial Services</td>
+      <td class="score-cell score-weak"><strong>46</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-strong">94</td>
+      <td class="score-cell score-weak">19</td>
+      <td class="score-cell score-weak">6</td>
+      <td class="score-cell score-fair">56</td>
+      <td class="metric-cell">13.5x</td>
+      <td class="metric-cell pos">+50.6%</td>
+    </tr><tr>
+      <td class="rank">9</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/PLTR" target="_blank" class="ticker-link">PLTR</a>
+        
+      </td>
+      <td class="name-cell">Palantir Technologies Inc.</td>
+      <td class="sector-cell">Technology</td>
+      <td class="score-cell score-weak"><strong>50</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-strong">94</td>
+      <td class="score-cell score-weak">2</td>
+      <td class="score-cell score-weak">44</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="metric-cell">81.7x</td>
+      <td class="metric-cell pos">+70.0%</td>
+    </tr><tr>
+      <td class="rank">10</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/INCY" target="_blank" class="ticker-link">INCY</a>
+        
+      </td>
+      <td class="name-cell">Incyte Corporation</td>
+      <td class="sector-cell">Healthcare</td>
+      <td class="score-cell score-fair"><strong>68</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">93</td>
+      <td class="score-cell score-strong">70</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="metric-cell">10.7x</td>
+      <td class="metric-cell pos">+27.8%</td>
+    </tr><tr>
+      <td class="rank">11</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/GOOG" target="_blank" class="ticker-link">GOOG</a>
+        
+      </td>
+      <td class="name-cell">Alphabet Inc.</td>
+      <td class="sector-cell">Communication Services</td>
+      <td class="score-cell score-fair"><strong>54</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-strong">93</td>
+      <td class="score-cell score-weak">18</td>
+      <td class="score-cell score-fair">65</td>
+      <td class="score-cell score-weak">28</td>
+      <td class="metric-cell">22.5x</td>
+      <td class="metric-cell pos">+18.0%</td>
+    </tr><tr>
+      <td class="rank">12</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/GOOGL" target="_blank" class="ticker-link">GOOGL</a>
+        
+      </td>
+      <td class="name-cell">Alphabet Inc.</td>
+      <td class="sector-cell">Communication Services</td>
+      <td class="score-cell score-fair"><strong>54</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-strong">93</td>
+      <td class="score-cell score-weak">18</td>
+      <td class="score-cell score-fair">66</td>
+      <td class="score-cell score-weak">28</td>
+      <td class="metric-cell">22.5x</td>
+      <td class="metric-cell pos">+18.0%</td>
+    </tr><tr>
+      <td class="rank">13</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/PM" target="_blank" class="ticker-link">PM</a>
+        
+      </td>
+      <td class="name-cell">Philip Morris International Inc.</td>
+      <td class="sector-cell">Consumer Defensive</td>
+      <td class="score-cell score-fair"><strong>60</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-strong">93</td>
+      <td class="score-cell score-weak">24</td>
+      <td class="score-cell score-fair">56</td>
+      <td class="score-cell score-fair">61</td>
+      <td class="metric-cell">19.0x</td>
+      <td class="metric-cell pos">+6.8%</td>
+    </tr><tr>
+      <td class="rank">14</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/AZO" target="_blank" class="ticker-link">AZO</a>
+        
+      </td>
+      <td class="name-cell">AutoZone, Inc.</td>
+      <td class="sector-cell">Consumer Cyclical</td>
+      <td class="score-cell score-fair"><strong>58</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-strong">93</td>
+      <td class="score-cell score-weak">41</td>
+      <td class="score-cell score-weak">40</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="metric-cell">20.4x</td>
+      <td class="metric-cell ">—</td>
+    </tr><tr>
+      <td class="rank">15</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/CF" target="_blank" class="ticker-link">CF</a>
+        
+      </td>
+      <td class="name-cell">CF Industries Holdings, Inc.</td>
+      <td class="sector-cell">Basic Materials</td>
+      <td class="score-cell score-strong"><strong>72</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">92</td>
+      <td class="score-cell score-fair">52</td>
+      <td class="score-cell score-strong">93</td>
+      <td class="score-cell score-weak">40</td>
+      <td class="metric-cell">17.6x</td>
+      <td class="metric-cell pos">+22.8%</td>
+    </tr></tbody>
+      </table>
+    </div>
+        </div>
+        <div id="view-b-value">
+          <h3 class="subsection-title">Value Opportunities</h3>
+          <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem;">Highest Value scores — trading at attractive multiples relative to fundamentals</p>
+          
+    <div class="table-wrap">
+      <table class="scores-table">
+        <thead><tr>
+          <th>Rank</th>
+          <th>Ticker</th><th>Company</th><th>Sector</th>
+          <th>Composite</th><th>Quality</th><th>Value</th><th>Momentum</th><th>Income</th>
+          <th>Fwd P/E</th><th>Rev Growth</th>
+        </tr></thead>
+        <tbody><tr>
+      <td class="rank">1</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/CNC" target="_blank" class="ticker-link">CNC</a>
+        
+      </td>
+      <td class="name-cell">Centene Corporation</td>
+      <td class="sector-cell">Healthcare</td>
+      <td class="score-cell score-fair"><strong>51</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">32</td>
+      <td class="score-cell score-strong">100</td>
+      <td class="score-cell score-weak">25</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="metric-cell">8.4x</td>
+      <td class="metric-cell pos">+23.2%</td>
+    </tr><tr>
+      <td class="rank">2</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/HPQ" target="_blank" class="ticker-link">HPQ</a>
+        
+      </td>
+      <td class="name-cell">HP Inc.</td>
+      <td class="sector-cell">Technology</td>
+      <td class="score-cell score-weak"><strong>48</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">18</td>
+      <td class="score-cell score-strong">100</td>
+      <td class="score-cell score-weak">23</td>
+      <td class="score-cell score-fair">58</td>
+      <td class="metric-cell">6.4x</td>
+      <td class="metric-cell pos">+6.9%</td>
+    </tr><tr>
+      <td class="rank">3</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/TAP" target="_blank" class="ticker-link">TAP</a>
+        
+      </td>
+      <td class="name-cell">Molson Coors Beverage Company</td>
+      <td class="sector-cell">Consumer Defensive</td>
+      <td class="score-cell score-weak"><strong>49</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">24</td>
+      <td class="score-cell score-strong">100</td>
+      <td class="score-cell score-weak">28</td>
+      <td class="score-cell score-weak">50</td>
+      <td class="metric-cell">8.6x</td>
+      <td class="metric-cell neg">-2.7%</td>
+    </tr><tr>
+      <td class="rank">4</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/ARE" target="_blank" class="ticker-link">ARE</a>
+        
+      </td>
+      <td class="name-cell">Alexandria Real Estate Equities,</td>
+      <td class="sector-cell">Real Estate</td>
+      <td class="score-cell score-weak"><strong>47</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">20</td>
+      <td class="score-cell score-strong">99</td>
+      <td class="score-cell score-weak">15</td>
+      <td class="score-cell score-fair">62</td>
+      <td class="metric-cell">-605.1x</td>
+      <td class="metric-cell neg">-5.2%</td>
+    </tr><tr>
+      <td class="rank">5</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/HPE" target="_blank" class="ticker-link">HPE</a>
+        
+      </td>
+      <td class="name-cell">Hewlett Packard Enterprise Compa</td>
+      <td class="sector-cell">Technology</td>
+      <td class="score-cell score-fair"><strong>58</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">26</td>
+      <td class="score-cell score-strong">99</td>
+      <td class="score-cell score-weak">50</td>
+      <td class="score-cell score-fair">63</td>
+      <td class="metric-cell">7.9x</td>
+      <td class="metric-cell pos">+18.4%</td>
+    </tr><tr>
+      <td class="rank">6</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/KHC" target="_blank" class="ticker-link">KHC</a>
+        
+      </td>
+      <td class="name-cell">The Kraft Heinz Company</td>
+      <td class="sector-cell">Consumer Defensive</td>
+      <td class="score-cell score-fair"><strong>52</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">22</td>
+      <td class="score-cell score-strong">99</td>
+      <td class="score-cell score-weak">30</td>
+      <td class="score-cell score-fair">64</td>
+      <td class="metric-cell">10.5x</td>
+      <td class="metric-cell neg">-3.4%</td>
+    </tr><tr>
+      <td class="rank">7</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/CAG" target="_blank" class="ticker-link">CAG</a>
+        
+      </td>
+      <td class="name-cell">Conagra Brands, Inc.</td>
+      <td class="sector-cell">Consumer Defensive</td>
+      <td class="score-cell score-weak"><strong>47</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">14</td>
+      <td class="score-cell score-strong">99</td>
+      <td class="score-cell score-weak">27</td>
+      <td class="score-cell score-fair">60</td>
+      <td class="metric-cell">9.1x</td>
+      <td class="metric-cell neg">-6.8%</td>
+    </tr><tr>
+      <td class="rank">8</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/FISV" target="_blank" class="ticker-link">FISV</a>
+        <span class="stale-badge stale">⚠ Data age unknown — treat with caution</span>
+      </td>
+      <td class="name-cell">Fiserv, Inc.</td>
+      <td class="sector-cell">EQUITY</td>
+      <td class="score-cell score-weak"><strong>37</strong><span class="score-word">Weak</span></td>
+      <td class="score-cell score-weak">0</td>
+      <td class="score-cell score-strong">98</td>
+      <td class="score-cell score-weak">11</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="metric-cell">6.3x</td>
+      <td class="metric-cell ">—</td>
+    </tr><tr>
+      <td class="rank">9</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/PSKY" target="_blank" class="ticker-link">PSKY</a>
+        
+      </td>
+      <td class="name-cell">Paramount Skydance Corporation</td>
+      <td class="sector-cell">Communication Services</td>
+      <td class="score-cell score-weak"><strong>42</strong><span class="score-word">Weak</span></td>
+      <td class="score-cell score-weak">15</td>
+      <td class="score-cell score-strong">98</td>
+      <td class="score-cell score-weak">8</td>
+      <td class="score-cell score-fair">56</td>
+      <td class="metric-cell">10.3x</td>
+      <td class="metric-cell pos">+2.1%</td>
+    </tr><tr>
+      <td class="rank">10</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/SWKS" target="_blank" class="ticker-link">SWKS</a>
+        
+      </td>
+      <td class="name-cell">Skyworks Solutions, Inc.</td>
+      <td class="sector-cell">Technology</td>
+      <td class="score-cell score-weak"><strong>46</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">29</td>
+      <td class="score-cell score-strong">98</td>
+      <td class="score-cell score-weak">23</td>
+      <td class="score-cell score-weak">38</td>
+      <td class="metric-cell">10.9x</td>
+      <td class="metric-cell neg">-3.1%</td>
+    </tr><tr>
+      <td class="rank">11</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/LEN" target="_blank" class="ticker-link">LEN</a>
+        
+      </td>
+      <td class="name-cell">Lennar Corporation</td>
+      <td class="sector-cell">Consumer Cyclical</td>
+      <td class="score-cell score-weak"><strong>46</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">25</td>
+      <td class="score-cell score-strong">98</td>
+      <td class="score-cell score-weak">17</td>
+      <td class="score-cell score-fair">51</td>
+      <td class="metric-cell">11.5x</td>
+      <td class="metric-cell neg">-13.3%</td>
+    </tr><tr>
+      <td class="rank">12</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/BAX" target="_blank" class="ticker-link">BAX</a>
+        
+      </td>
+      <td class="name-cell">Baxter International Inc.</td>
+      <td class="sector-cell">Healthcare</td>
+      <td class="score-cell score-weak"><strong>44</strong><span class="score-word">Weak</span></td>
+      <td class="score-cell score-weak">20</td>
+      <td class="score-cell score-strong">97</td>
+      <td class="score-cell score-weak">15</td>
+      <td class="score-cell score-weak">49</td>
+      <td class="metric-cell">8.5x</td>
+      <td class="metric-cell pos">+8.0%</td>
+    </tr><tr>
+      <td class="rank">13</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/HUM" target="_blank" class="ticker-link">HUM</a>
+        
+      </td>
+      <td class="name-cell">Humana Inc.</td>
+      <td class="sector-cell">Healthcare</td>
+      <td class="score-cell score-weak"><strong>44</strong><span class="score-word">Weak</span></td>
+      <td class="score-cell score-weak">35</td>
+      <td class="score-cell score-strong">97</td>
+      <td class="score-cell score-weak">5</td>
+      <td class="score-cell score-weak">39</td>
+      <td class="metric-cell">10.8x</td>
+      <td class="metric-cell pos">+11.3%</td>
+    </tr><tr>
+      <td class="rank">14</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/SW" target="_blank" class="ticker-link">SW</a>
+        
+      </td>
+      <td class="name-cell">Smurfit Westrock Plc</td>
+      <td class="sector-cell">Consumer Cyclical</td>
+      <td class="score-cell score-weak"><strong>48</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">18</td>
+      <td class="score-cell score-strong">97</td>
+      <td class="score-cell score-weak">36</td>
+      <td class="score-cell score-weak">44</td>
+      <td class="metric-cell">12.2x</td>
+      <td class="metric-cell pos">+0.5%</td>
+    </tr><tr>
+      <td class="rank">15</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/APTV" target="_blank" class="ticker-link">APTV</a>
+        
+      </td>
+      <td class="name-cell">Aptiv PLC</td>
+      <td class="sector-cell">Consumer Cyclical</td>
+      <td class="score-cell score-weak"><strong>49</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">18</td>
+      <td class="score-cell score-strong">97</td>
+      <td class="score-cell score-weak">37</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="metric-cell">7.5x</td>
+      <td class="metric-cell pos">+5.0%</td>
+    </tr></tbody>
+      </table>
+    </div>
+        </div>
+        <div id="view-b-momentum">
+          <h3 class="subsection-title">Momentum Leaders</h3>
+          <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem;">Highest Momentum scores — positive price trends confirmed by fundamentals</p>
+          
+    <div class="table-wrap">
+      <table class="scores-table">
+        <thead><tr>
+          <th>Rank</th>
+          <th>Ticker</th><th>Company</th><th>Sector</th>
+          <th>Composite</th><th>Quality</th><th>Value</th><th>Momentum</th><th>Income</th>
+          <th>Fwd P/E</th><th>Rev Growth</th>
+        </tr></thead>
+        <tbody><tr>
+      <td class="rank">1</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/SNDK" target="_blank" class="ticker-link">SNDK</a>
+        
+      </td>
+      <td class="name-cell">Sandisk Corporation</td>
+      <td class="sector-cell">Technology</td>
+      <td class="score-cell score-fair"><strong>58</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-fair">53</td>
+      <td class="score-cell score-weak">30</td>
+      <td class="score-cell score-strong">96</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="metric-cell">7.7x</td>
+      <td class="metric-cell pos">+61.2%</td>
+    </tr><tr>
+      <td class="rank">2</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/APA" target="_blank" class="ticker-link">APA</a>
+        
+      </td>
+      <td class="name-cell">APA Corporation</td>
+      <td class="sector-cell">Energy</td>
+      <td class="score-cell score-strong"><strong>72</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">64</td>
+      <td class="score-cell score-strong">80</td>
+      <td class="score-cell score-strong">95</td>
+      <td class="score-cell score-weak">44</td>
+      <td class="metric-cell">13.6x</td>
+      <td class="metric-cell neg">-28.0%</td>
+    </tr><tr>
+      <td class="rank">3</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/OXY" target="_blank" class="ticker-link">OXY</a>
+        
+      </td>
+      <td class="name-cell">Occidental Petroleum Corporation</td>
+      <td class="sector-cell">Energy</td>
+      <td class="score-cell score-fair"><strong>64</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">74</td>
+      <td class="score-cell score-weak">33</td>
+      <td class="score-cell score-strong">94</td>
+      <td class="score-cell score-weak">48</td>
+      <td class="metric-cell">24.6x</td>
+      <td class="metric-cell pos">+148.9%</td>
+    </tr><tr>
+      <td class="rank">4</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/DOW" target="_blank" class="ticker-link">DOW</a>
+        
+      </td>
+      <td class="name-cell">Dow Inc.</td>
+      <td class="sector-cell">Basic Materials</td>
+      <td class="score-cell score-fair"><strong>52</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">10</td>
+      <td class="score-cell score-weak">29</td>
+      <td class="score-cell score-strong">94</td>
+      <td class="score-cell score-strong">92</td>
+      <td class="metric-cell">49.9x</td>
+      <td class="metric-cell neg">-9.1%</td>
+    </tr><tr>
+      <td class="rank">5</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/LYB" target="_blank" class="ticker-link">LYB</a>
+        
+      </td>
+      <td class="name-cell">LyondellBasell Industries N.V.</td>
+      <td class="sector-cell">Basic Materials</td>
+      <td class="score-cell score-weak"><strong>44</strong><span class="score-word">Weak</span></td>
+      <td class="score-cell score-weak">6</td>
+      <td class="score-cell score-weak">27</td>
+      <td class="score-cell score-strong">94</td>
+      <td class="score-cell score-fair">62</td>
+      <td class="metric-cell">17.3x</td>
+      <td class="metric-cell neg">-9.2%</td>
+    </tr><tr>
+      <td class="rank">6</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/CF" target="_blank" class="ticker-link">CF</a>
+        
+      </td>
+      <td class="name-cell">CF Industries Holdings, Inc.</td>
+      <td class="sector-cell">Basic Materials</td>
+      <td class="score-cell score-strong"><strong>72</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">92</td>
+      <td class="score-cell score-fair">52</td>
+      <td class="score-cell score-strong">93</td>
+      <td class="score-cell score-weak">40</td>
+      <td class="metric-cell">17.6x</td>
+      <td class="metric-cell pos">+22.8%</td>
+    </tr><tr>
+      <td class="rank">7</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/CIEN" target="_blank" class="ticker-link">CIEN</a>
+        
+      </td>
+      <td class="name-cell">Ciena Corporation</td>
+      <td class="sector-cell">Technology</td>
+      <td class="score-cell score-fair"><strong>54</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-fair">57</td>
+      <td class="score-cell score-weak">12</td>
+      <td class="score-cell score-strong">93</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="metric-cell">41.0x</td>
+      <td class="metric-cell pos">+33.1%</td>
+    </tr><tr>
+      <td class="rank">8</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/MRNA" target="_blank" class="ticker-link">MRNA</a>
+        
+      </td>
+      <td class="name-cell">Moderna, Inc.</td>
+      <td class="sector-cell">Healthcare</td>
+      <td class="score-cell score-fair"><strong>56</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">18</td>
+      <td class="score-cell score-strong">72</td>
+      <td class="score-cell score-strong">90</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="metric-cell">-11.5x</td>
+      <td class="metric-cell neg">-29.8%</td>
+    </tr><tr>
+      <td class="rank">9</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/KEYS" target="_blank" class="ticker-link">KEYS</a>
+        
+      </td>
+      <td class="name-cell">Keysight Technologies, Inc.</td>
+      <td class="sector-cell">Technology</td>
+      <td class="score-cell score-fair"><strong>60</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">72</td>
+      <td class="score-cell score-weak">26</td>
+      <td class="score-cell score-strong">90</td>
+      <td class="score-cell score-fair">50</td>
+      <td class="metric-cell">27.3x</td>
+      <td class="metric-cell pos">+23.3%</td>
+    </tr><tr>
+      <td class="rank">10</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/COP" target="_blank" class="ticker-link">COP</a>
+        
+      </td>
+      <td class="name-cell">ConocoPhillips</td>
+      <td class="sector-cell">Energy</td>
+      <td class="score-cell score-fair"><strong>61</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">58</td>
+      <td class="score-cell score-weak">42</td>
+      <td class="score-cell score-strong">89</td>
+      <td class="score-cell score-fair">55</td>
+      <td class="metric-cell">17.8x</td>
+      <td class="metric-cell neg">-6.8%</td>
+    </tr><tr>
+      <td class="rank">11</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/PSX" target="_blank" class="ticker-link">PSX</a>
+        
+      </td>
+      <td class="name-cell">Phillips 66</td>
+      <td class="sector-cell">Energy</td>
+      <td class="score-cell score-fair"><strong>58</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-fair">54</td>
+      <td class="score-cell score-weak">29</td>
+      <td class="score-cell score-strong">89</td>
+      <td class="score-cell score-fair">61</td>
+      <td class="metric-cell">13.3x</td>
+      <td class="metric-cell pos">+1.3%</td>
+    </tr><tr>
+      <td class="rank">12</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/DVN" target="_blank" class="ticker-link">DVN</a>
+        
+      </td>
+      <td class="name-cell">Devon Energy Corporation</td>
+      <td class="sector-cell">Energy</td>
+      <td class="score-cell score-fair"><strong>70</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">65</td>
+      <td class="score-cell score-fair">69</td>
+      <td class="score-cell score-strong">89</td>
+      <td class="score-cell score-fair">52</td>
+      <td class="metric-cell">10.1x</td>
+      <td class="metric-cell neg">-12.1%</td>
+    </tr><tr>
+      <td class="rank">13</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/PWR" target="_blank" class="ticker-link">PWR</a>
+        
+      </td>
+      <td class="name-cell">Quanta Services, Inc.</td>
+      <td class="sector-cell">Industrials</td>
+      <td class="score-cell score-weak"><strong>42</strong><span class="score-word">Weak</span></td>
+      <td class="score-cell score-fair">50</td>
+      <td class="score-cell score-weak">0</td>
+      <td class="score-cell score-strong">89</td>
+      <td class="score-cell score-weak">22</td>
+      <td class="metric-cell">36.3x</td>
+      <td class="metric-cell pos">+19.7%</td>
+    </tr><tr>
+      <td class="rank">14</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/XOM" target="_blank" class="ticker-link">XOM</a>
+        
+      </td>
+      <td class="name-cell">Exxon Mobil Corporation</td>
+      <td class="sector-cell">Energy</td>
+      <td class="score-cell score-fair"><strong>58</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-fair">56</td>
+      <td class="score-cell score-weak">21</td>
+      <td class="score-cell score-strong">88</td>
+      <td class="score-cell score-fair">68</td>
+      <td class="metric-cell">18.2x</td>
+      <td class="metric-cell neg">-1.3%</td>
+    </tr><tr>
+      <td class="rank">15</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/BG" target="_blank" class="ticker-link">BG</a>
+        
+      </td>
+      <td class="name-cell">Bunge Global SA</td>
+      <td class="sector-cell">Consumer Defensive</td>
+      <td class="score-cell score-fair"><strong>61</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-weak">30</td>
+      <td class="score-cell score-fair">58</td>
+      <td class="score-cell score-strong">88</td>
+      <td class="score-cell score-strong">78</td>
+      <td class="metric-cell">12.4x</td>
+      <td class="metric-cell pos">+75.5%</td>
+    </tr></tbody>
+      </table>
+    </div>
+        </div>
+        <div id="view-b-income">
+          <h3 class="subsection-title">Income Leaders</h3>
+          <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem;">Highest Income scores — sustainable dividends with strong FCF coverage</p>
+          
+    <div class="table-wrap">
+      <table class="scores-table">
+        <thead><tr>
+          <th>Rank</th>
+          <th>Ticker</th><th>Company</th><th>Sector</th>
+          <th>Composite</th><th>Quality</th><th>Value</th><th>Momentum</th><th>Income</th>
+          <th>Fwd P/E</th><th>Rev Growth</th>
+        </tr></thead>
+        <tbody><tr>
+      <td class="rank">1</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/DOW" target="_blank" class="ticker-link">DOW</a>
+        
+      </td>
+      <td class="name-cell">Dow Inc.</td>
+      <td class="sector-cell">Basic Materials</td>
+      <td class="score-cell score-fair"><strong>52</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">10</td>
+      <td class="score-cell score-weak">29</td>
+      <td class="score-cell score-strong">94</td>
+      <td class="score-cell score-strong">92</td>
+      <td class="metric-cell">49.9x</td>
+      <td class="metric-cell neg">-9.1%</td>
+    </tr><tr>
+      <td class="rank">2</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/IRM" target="_blank" class="ticker-link">IRM</a>
+        
+      </td>
+      <td class="name-cell">Iron Mountain Incorporated</td>
+      <td class="sector-cell">Real Estate</td>
+      <td class="score-cell score-fair"><strong>51</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-fair">52</td>
+      <td class="score-cell score-weak">0</td>
+      <td class="score-cell score-fair">69</td>
+      <td class="score-cell score-strong">92</td>
+      <td class="metric-cell">41.7x</td>
+      <td class="metric-cell pos">+16.6%</td>
+    </tr><tr>
+      <td class="rank">3</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/DUK" target="_blank" class="ticker-link">DUK</a>
+        
+      </td>
+      <td class="name-cell">Duke Energy Corporation</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>68</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">61</td>
+      <td class="score-cell score-fair">56</td>
+      <td class="score-cell score-fair">70</td>
+      <td class="score-cell score-strong">92</td>
+      <td class="metric-cell">18.6x</td>
+      <td class="metric-cell pos">+8.0%</td>
+    </tr><tr>
+      <td class="rank">4</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/PPL" target="_blank" class="ticker-link">PPL</a>
+        
+      </td>
+      <td class="name-cell">PPL Corporation</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>66</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">60</td>
+      <td class="score-cell score-fair">53</td>
+      <td class="score-cell score-fair">65</td>
+      <td class="score-cell score-strong">90</td>
+      <td class="metric-cell">18.2x</td>
+      <td class="metric-cell pos">+2.8%</td>
+    </tr><tr>
+      <td class="rank">5</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/ETR" target="_blank" class="ticker-link">ETR</a>
+        
+      </td>
+      <td class="name-cell">Entergy Corporation</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>61</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">53</td>
+      <td class="score-cell score-weak">36</td>
+      <td class="score-cell score-strong">72</td>
+      <td class="score-cell score-strong">90</td>
+      <td class="metric-cell">21.4x</td>
+      <td class="metric-cell pos">+7.9%</td>
+    </tr><tr>
+      <td class="rank">6</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/KEY" target="_blank" class="ticker-link">KEY</a>
+        
+      </td>
+      <td class="name-cell">KeyCorp</td>
+      <td class="sector-cell">Financial Services</td>
+      <td class="score-cell score-fair"><strong>61</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-weak">49</td>
+      <td class="score-cell score-strong">71</td>
+      <td class="score-cell score-weak">44</td>
+      <td class="score-cell score-strong">88</td>
+      <td class="metric-cell">8.9x</td>
+      <td class="metric-cell pos">+131.5%</td>
+    </tr><tr>
+      <td class="rank">7</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/ED" target="_blank" class="ticker-link">ED</a>
+        
+      </td>
+      <td class="name-cell">Consolidated Edison, Inc.</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>68</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">56</td>
+      <td class="score-cell score-fair">63</td>
+      <td class="score-cell score-strong">72</td>
+      <td class="score-cell score-strong">88</td>
+      <td class="metric-cell">17.7x</td>
+      <td class="metric-cell pos">+8.9%</td>
+    </tr><tr>
+      <td class="rank">8</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/PNW" target="_blank" class="ticker-link">PNW</a>
+        
+      </td>
+      <td class="name-cell">Pinnacle West Capital Corporatio</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>63</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-weak">44</td>
+      <td class="score-cell score-fair">55</td>
+      <td class="score-cell score-strong">73</td>
+      <td class="score-cell score-strong">88</td>
+      <td class="metric-cell">18.3x</td>
+      <td class="metric-cell pos">+3.0%</td>
+    </tr><tr>
+      <td class="rank">9</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/DTE" target="_blank" class="ticker-link">DTE</a>
+        
+      </td>
+      <td class="name-cell">DTE Energy Company</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>62</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">56</td>
+      <td class="score-cell score-weak">41</td>
+      <td class="score-cell score-fair">67</td>
+      <td class="score-cell score-strong">88</td>
+      <td class="metric-cell">18.1x</td>
+      <td class="metric-cell pos">+28.9%</td>
+    </tr><tr>
+      <td class="rank">10</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/LNT" target="_blank" class="ticker-link">LNT</a>
+        
+      </td>
+      <td class="name-cell">Alliant Energy Corporation</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>62</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">62</td>
+      <td class="score-cell score-weak">34</td>
+      <td class="score-cell score-strong">70</td>
+      <td class="score-cell score-strong">88</td>
+      <td class="metric-cell">19.8x</td>
+      <td class="metric-cell pos">+9.0%</td>
+    </tr><tr>
+      <td class="rank">11</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/EXC" target="_blank" class="ticker-link">EXC</a>
+        
+      </td>
+      <td class="name-cell">Exelon Corporation</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>62</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-weak">36</td>
+      <td class="score-cell score-fair">63</td>
+      <td class="score-cell score-strong">71</td>
+      <td class="score-cell score-strong">87</td>
+      <td class="metric-cell">16.4x</td>
+      <td class="metric-cell neg">-1.1%</td>
+    </tr><tr>
+      <td class="rank">12</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/AEP" target="_blank" class="ticker-link">AEP</a>
+        
+      </td>
+      <td class="name-cell">American Electric Power Company,</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>66</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">61</td>
+      <td class="score-cell score-weak">46</td>
+      <td class="score-cell score-strong">76</td>
+      <td class="score-cell score-strong">86</td>
+      <td class="metric-cell">19.5x</td>
+      <td class="metric-cell pos">+13.2%</td>
+    </tr><tr>
+      <td class="rank">13</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/AES" target="_blank" class="ticker-link">AES</a>
+        
+      </td>
+      <td class="name-cell">The AES Corporation</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>52</strong><span class="score-word">Fair</span></td>
+      <td class="score-cell score-weak">15</td>
+      <td class="score-cell score-strong">71</td>
+      <td class="score-cell score-fair">51</td>
+      <td class="score-cell score-strong">86</td>
+      <td class="metric-cell">5.9x</td>
+      <td class="metric-cell pos">+4.7%</td>
+    </tr><tr>
+      <td class="rank">14</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/PEG" target="_blank" class="ticker-link">PEG</a>
+        
+      </td>
+      <td class="name-cell">Public Service Enterprise Group </td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>64</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-strong">72</td>
+      <td class="score-cell score-weak">47</td>
+      <td class="score-cell score-fair">53</td>
+      <td class="score-cell score-strong">85</td>
+      <td class="metric-cell">17.8x</td>
+      <td class="metric-cell pos">+18.3%</td>
+    </tr><tr>
+      <td class="rank">15</td>
+      <td class="ticker-cell">
+        <a href="https://finance.yahoo.com/quote/CMS" target="_blank" class="ticker-link">CMS</a>
+        
+      </td>
+      <td class="name-cell">CMS Energy Corporation</td>
+      <td class="sector-cell">Utilities</td>
+      <td class="score-cell score-fair"><strong>62</strong><span class="score-word">Good</span></td>
+      <td class="score-cell score-fair">60</td>
+      <td class="score-cell score-weak">44</td>
+      <td class="score-cell score-fair">67</td>
+      <td class="score-cell score-strong">84</td>
+      <td class="metric-cell">18.7x</td>
+      <td class="metric-cell pos">+12.3%</td>
+    </tr></tbody>
+      </table>
+    </div>
+        </div>
+  </section>
+
+  
+    <section class="section" id="view-c">
+      <h2 class="section-title">
+        View C — Watchlist Assessment
+        <span class="count">14 tickers</span>
+      </h2>
+      <div class="cards-grid">
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/COIN" target="_blank" class="card-ticker">COIN</a>
+          <span class="card-name">Coinbase Global, Inc.</span>
+          <span class="card-sector">Financial Services</span>
+          
+        </div>
+        <div class="card-composite score-weak">
+          <span class="comp-score">29</span>
+          <span class="comp-label">Poor</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:44%"></div></div>
+          <span class="module-score score-weak">44 <em>Weak</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:3%"></div></div>
+          <span class="module-score score-weak">3 <em>Poor</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:19%"></div></div>
+          <span class="module-score score-weak">19 <em>Poor</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-fair" style="width:50%"></div></div>
+          <span class="module-score score-fair">50 <em>Fair</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">32.8x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">-22.2%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-56.0%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$53B</span></div></div>
+      </div>
+      <ul class='flags'><li>⚠️  Revenue declining: -22.2% YoY</li><li>⚠️  -31.4% below 200-day MA — downtrend</li><li>🏦  Financial sector — D/E excluded; ROE is primary quality metric</li></ul>
+    </div>
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/HOOD" target="_blank" class="card-ticker">HOOD</a>
+          <span class="card-name">Robinhood Markets, Inc.</span>
+          <span class="card-sector">Financial Services</span>
+          
+        </div>
+        <div class="card-composite score-weak">
+          <span class="comp-score">38</span>
+          <span class="comp-label">Weak</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-strong" style="width:83%"></div></div>
+          <span class="module-score score-strong">83 <em>Strong</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:0%"></div></div>
+          <span class="module-score score-weak">0 <em>Poor</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:10%"></div></div>
+          <span class="module-score score-weak">10 <em>Poor</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-fair" style="width:50%"></div></div>
+          <span class="module-score score-fair">50 <em>Fair</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">26.7x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">+26.5%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-52.3%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$66B</span></div></div>
+      </div>
+      <ul class='flags'><li>⚠️  -31.8% below 200-day MA — downtrend</li><li>⚠️  Earnings down 34% YoY — verify not structural</li><li>🏦  Financial sector — D/E excluded; ROE is primary quality metric</li></ul>
+    </div>
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/CRWD" target="_blank" class="card-ticker">CRWD</a>
+          <span class="card-name">CrowdStrike Holdings, Inc.</span>
+          <span class="card-sector">Technology</span>
+          
+        </div>
+        <div class="card-composite score-weak">
+          <span class="comp-score">40</span>
+          <span class="comp-label">Weak</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-fair" style="width:55%"></div></div>
+          <span class="module-score score-fair">55 <em>Fair</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:8%"></div></div>
+          <span class="module-score score-weak">8 <em>Poor</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:48%"></div></div>
+          <span class="module-score score-weak">48 <em>Fair</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-fair" style="width:50%"></div></div>
+          <span class="module-score score-fair">50 <em>Fair</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">71.5x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">+23.3%</span></div><div class="kv"><span class="kv-label">D/E Ratio</span><span class="kv-value">18%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-22.1%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$112B</span></div></div>
+      </div>
+      <ul class='flags'><li>📉  22% off 52w high — potential entry in uptrend</li></ul>
+    </div>
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/AXP" target="_blank" class="card-ticker">AXP</a>
+          <span class="card-name">American Express Company</span>
+          <span class="card-sector">Financial Services</span>
+          
+        </div>
+        <div class="card-composite score-weak">
+          <span class="comp-score">46</span>
+          <span class="comp-label">Fair</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-strong" style="width:86%"></div></div>
+          <span class="module-score score-strong">86 <em>Strong</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:13%"></div></div>
+          <span class="module-score score-weak">13 <em>Poor</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:33%"></div></div>
+          <span class="module-score score-weak">33 <em>Weak</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:44%"></div></div>
+          <span class="module-score score-weak">44 <em>Weak</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">14.9x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">+10.6%</span></div><div class="kv"><span class="kv-label">Div Yield</span><span class="kv-value">127.00%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-22.6%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$207B</span></div></div>
+      </div>
+      <ul class='flags'><li>⚠️  Yield 127.0% — verify dividend sustainability</li><li>📉  23% off 52w high — potential entry in uptrend</li><li>🏦  Financial sector — D/E excluded; ROE is primary quality metric</li></ul>
+    </div>
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/JPM" target="_blank" class="card-ticker">JPM</a>
+          <span class="card-name">JPMorgan Chase &amp; Co.</span>
+          <span class="card-sector">Financial Services</span>
+          
+        </div>
+        <div class="card-composite score-weak">
+          <span class="comp-score">46</span>
+          <span class="comp-label">Fair</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-fair" style="width:53%"></div></div>
+          <span class="module-score score-fair">53 <em>Fair</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:31%"></div></div>
+          <span class="module-score score-weak">31 <em>Weak</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:42%"></div></div>
+          <span class="module-score score-weak">42 <em>Weak</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-fair" style="width:60%"></div></div>
+          <span class="module-score score-fair">60 <em>Fair</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">12.1x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">+2.5%</span></div><div class="kv"><span class="kv-label">Div Yield</span><span class="kv-value">212.00%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-16.0%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$764B</span></div></div>
+      </div>
+      <ul class='flags'><li>⚠️  Yield 212.0% — verify dividend sustainability</li><li>📉  16% off 52w high — potential entry in uptrend</li><li>🏦  Financial sector — D/E excluded; ROE is primary quality metric</li></ul>
+    </div>
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/AMZN" target="_blank" class="card-ticker">AMZN</a>
+          <span class="card-name">Amazon.com, Inc.</span>
+          <span class="card-sector">Consumer Cyclical</span>
+          
+        </div>
+        <div class="card-composite score-weak">
+          <span class="comp-score">50</span>
+          <span class="comp-label">Fair</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-strong" style="width:75%"></div></div>
+          <span class="module-score score-strong">75 <em>Good</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:31%"></div></div>
+          <span class="module-score score-weak">31 <em>Weak</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:39%"></div></div>
+          <span class="module-score score-weak">39 <em>Weak</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-fair" style="width:50%"></div></div>
+          <span class="module-score score-fair">50 <em>Fair</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">22.2x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">+13.6%</span></div><div class="kv"><span class="kv-label">D/E Ratio</span><span class="kv-value">43%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-19.7%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$2229B</span></div></div>
+      </div>
+      <ul class='flags'><li>📉  20% off 52w high — potential entry in uptrend</li></ul>
+    </div>
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/AMD" target="_blank" class="card-ticker">AMD</a>
+          <span class="card-name">Advanced Micro Devices, Inc.</span>
+          <span class="card-sector">Technology</span>
+          
+        </div>
+        <div class="card-composite score-fair">
+          <span class="comp-score">50</span>
+          <span class="comp-label">Fair</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-fair" style="width:67%"></div></div>
+          <span class="module-score score-fair">67 <em>Good</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:34%"></div></div>
+          <span class="module-score score-weak">34 <em>Weak</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:46%"></div></div>
+          <span class="module-score score-weak">46 <em>Fair</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-fair" style="width:50%"></div></div>
+          <span class="module-score score-fair">50 <em>Fair</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">17.8x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">+34.1%</span></div><div class="kv"><span class="kv-label">D/E Ratio</span><span class="kv-value">6%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-27.6%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$315B</span></div></div>
+      </div>
+      <ul class='flags'><li>📉  28% off 52w high — potential entry in uptrend</li></ul>
+    </div>
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/MSFT" target="_blank" class="card-ticker">MSFT</a>
+          <span class="card-name">Microsoft Corporation</span>
+          <span class="card-sector">Technology</span>
+          
+        </div>
+        <div class="card-composite score-fair">
+          <span class="comp-score">51</span>
+          <span class="comp-label">Fair</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-strong" style="width:87%"></div></div>
+          <span class="module-score score-strong">87 <em>Strong</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:46%"></div></div>
+          <span class="module-score score-weak">46 <em>Fair</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:26%"></div></div>
+          <span class="module-score score-weak">26 <em>Poor</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:31%"></div></div>
+          <span class="module-score score-weak">31 <em>Weak</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">21.0x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">+16.7%</span></div><div class="kv"><span class="kv-label">Div Yield</span><span class="kv-value">92.00%</span></div><div class="kv"><span class="kv-label">D/E Ratio</span><span class="kv-value">32%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-28.8%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$2940B</span></div></div>
+      </div>
+      <ul class='flags'><li>⚠️  Yield 92.0% — verify dividend sustainability</li><li>⚠️  -18.1% below 200-day MA — downtrend</li><li>📉  29% off 52w high — potential entry in uptrend</li></ul>
+    </div>
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/LUV" target="_blank" class="card-ticker">LUV</a>
+          <span class="card-name">Southwest Airlines Co.</span>
+          <span class="card-sector">Industrials</span>
+          
+        </div>
+        <div class="card-composite score-fair">
+          <span class="comp-score">52</span>
+          <span class="comp-label">Fair</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:48%"></div></div>
+          <span class="module-score score-weak">48 <em>Fair</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-strong" style="width:74%"></div></div>
+          <span class="module-score score-strong">74 <em>Good</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:44%"></div></div>
+          <span class="module-score score-weak">44 <em>Weak</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:41%"></div></div>
+          <span class="module-score score-weak">41 <em>Weak</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">7.9x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">+7.4%</span></div><div class="kv"><span class="kv-label">Div Yield</span><span class="kv-value">186.00%</span></div><div class="kv"><span class="kv-label">D/E Ratio</span><span class="kv-value">75%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-29.7%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$20B</span></div></div>
+      </div>
+      <ul class='flags'><li>⚠️  Yield 186.0% — verify dividend sustainability</li><li>⚠️  Payout ratio 91% — sustainability risk</li><li>📉  30% off 52w high — potential entry in uptrend</li></ul>
+    </div>
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/NVDA" target="_blank" class="card-ticker">NVDA</a>
+          <span class="card-name">NVIDIA Corporation</span>
+          <span class="card-sector">Technology</span>
+          
+        </div>
+        <div class="card-composite score-fair">
+          <span class="comp-score">53</span>
+          <span class="comp-label">Fair</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-strong" style="width:97%"></div></div>
+          <span class="module-score score-strong">97 <em>Strong</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:32%"></div></div>
+          <span class="module-score score-weak">32 <em>Weak</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-fair" style="width:53%"></div></div>
+          <span class="module-score score-fair">53 <em>Fair</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:15%"></div></div>
+          <span class="module-score score-weak">15 <em>Poor</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">16.7x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">+73.2%</span></div><div class="kv"><span class="kv-label">Div Yield</span><span class="kv-value">2.00%</span></div><div class="kv"><span class="kv-label">D/E Ratio</span><span class="kv-value">7%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-15.1%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$4381B</span></div></div>
+      </div>
+      <ul class='flags'><li>📉  15% off 52w high — potential entry in uptrend</li></ul>
+    </div>
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/GOOG" target="_blank" class="card-ticker">GOOG</a>
+          <span class="card-name">Alphabet Inc.</span>
+          <span class="card-sector">Communication Services</span>
+          
+        </div>
+        <div class="card-composite score-fair">
+          <span class="comp-score">54</span>
+          <span class="comp-label">Fair</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-strong" style="width:93%"></div></div>
+          <span class="module-score score-strong">93 <em>Strong</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:18%"></div></div>
+          <span class="module-score score-weak">18 <em>Poor</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-fair" style="width:65%"></div></div>
+          <span class="module-score score-fair">65 <em>Good</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:28%"></div></div>
+          <span class="module-score score-weak">28 <em>Poor</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">22.5x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">+18.0%</span></div><div class="kv"><span class="kv-label">Div Yield</span><span class="kv-value">28.00%</span></div><div class="kv"><span class="kv-label">D/E Ratio</span><span class="kv-value">16%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-13.9%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$3647B</span></div></div>
+      </div>
+      <ul class='flags'><li>⚠️  Yield 28.0% — verify dividend sustainability</li><li>📉  14% off 52w high — potential entry in uptrend</li></ul>
+    </div>
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/RCL" target="_blank" class="card-ticker">RCL</a>
+          <span class="card-name">Royal Caribbean Cruises Ltd.</span>
+          <span class="card-sector">Consumer Cyclical</span>
+          
+        </div>
+        <div class="card-composite score-fair">
+          <span class="comp-score">56</span>
+          <span class="comp-label">Fair</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-strong" style="width:79%"></div></div>
+          <span class="module-score score-strong">79 <em>Strong</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:47%"></div></div>
+          <span class="module-score score-weak">47 <em>Fair</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:36%"></div></div>
+          <span class="module-score score-weak">36 <em>Weak</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-fair" style="width:57%"></div></div>
+          <span class="module-score score-fair">57 <em>Fair</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">13.2x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">+13.3%</span></div><div class="kv"><span class="kv-label">Div Yield</span><span class="kv-value">156.00%</span></div><div class="kv"><span class="kv-label">D/E Ratio</span><span class="kv-value">215%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-25.6%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$74B</span></div></div>
+      </div>
+      <ul class='flags'><li>⚠️  High leverage: D/E 215%</li><li>⚠️  Yield 156.0% — verify dividend sustainability</li><li>📉  26% off 52w high — potential entry in uptrend</li></ul>
+    </div>
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/MRNA" target="_blank" class="card-ticker">MRNA</a>
+          <span class="card-name">Moderna, Inc.</span>
+          <span class="card-sector">Healthcare</span>
+          
+        </div>
+        <div class="card-composite score-fair">
+          <span class="comp-score">56</span>
+          <span class="comp-label">Fair</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:18%"></div></div>
+          <span class="module-score score-weak">18 <em>Poor</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-strong" style="width:72%"></div></div>
+          <span class="module-score score-strong">72 <em>Good</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-strong" style="width:90%"></div></div>
+          <span class="module-score score-strong">90 <em>Strong</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-fair" style="width:50%"></div></div>
+          <span class="module-score score-fair">50 <em>Fair</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">-11.5x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">-29.8%</span></div><div class="kv"><span class="kv-label">D/E Ratio</span><span class="kv-value">15%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-11.7%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$21B</span></div></div>
+      </div>
+      <ul class='flags'><li>⚠️  Revenue declining: -29.8% YoY</li><li>📉  12% off 52w high — potential entry in uptrend</li></ul>
+    </div>
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="https://finance.yahoo.com/quote/MU" target="_blank" class="card-ticker">MU</a>
+          <span class="card-name">Micron Technology, Inc.</span>
+          <span class="card-sector">Technology</span>
+          
+        </div>
+        <div class="card-composite score-fair">
+          <span class="comp-score">60</span>
+          <span class="comp-label">Fair</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules"><div class="module-row">
+          <span class="module-name">Quality</span>
+          <div class="module-bar"><div class="module-fill score-strong" style="width:78%"></div></div>
+          <span class="module-score score-strong">78 <em>Strong</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Value</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:39%"></div></div>
+          <span class="module-score score-weak">39 <em>Weak</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Momentum</span>
+          <div class="module-bar"><div class="module-fill score-strong" style="width:88%"></div></div>
+          <span class="module-score score-strong">88 <em>Strong</em></span>
+        </div><div class="module-row">
+          <span class="module-name">Income</span>
+          <div class="module-bar"><div class="module-fill score-weak" style="width:23%"></div></div>
+          <span class="module-score score-weak">23 <em>Poor</em></span>
+        </div></div>
+        <div class="card-metrics"><div class="kv"><span class="kv-label">Fwd P/E</span><span class="kv-value">8.6x</span></div><div class="kv"><span class="kv-label">Rev Growth</span><span class="kv-value">+56.7%</span></div><div class="kv"><span class="kv-label">Div Yield</span><span class="kv-value">11.00%</span></div><div class="kv"><span class="kv-label">D/E Ratio</span><span class="kv-value">21%</span></div><div class="kv"><span class="kv-label">52w High</span><span class="kv-value">-6.4%</span></div><div class="kv"><span class="kv-label">Mkt Cap</span><span class="kv-value">$480B</span></div></div>
+      </div>
+      <ul class='flags'><li>⚠️  Yield 11.0% — verify dividend sustainability</li><li>📈  Uptrend confirmed by solid fundamentals</li></ul>
+    </div></div><p style="margin-top:1rem;font-size:0.78rem;color:var(--text-muted);">Skipped (quality gate or data unavailable):</p><div class="skipped-list"><span class="skipped-tag">CRWV</span><span class="skipped-tag">DJT</span><span class="skipped-tag">ETH</span><span class="skipped-tag">ETHE</span><span class="skipped-tag">FTEC</span><span class="skipped-tag">GDX</span><span class="skipped-tag">KODK</span><span class="skipped-tag">LUMN</span><span class="skipped-tag">MRP</span><span class="skipped-tag">NOK</span><span class="skipped-tag">OCGN</span><span class="skipped-tag">PENG</span><span class="skipped-tag">PSTG</span><span class="skipped-tag">SHOP</span><span class="skipped-tag">TLX</span></div>
+    </section>
+
+  <div class="disclaimer">
+    This report is generated by an automated system for personal research only.
+    Scores reflect relative fundamental quality within the S&amp;P 500 universe and
+    do not constitute financial advice. Past performance is not indicative of
+    future results. Always conduct your own due diligence.
+  </div>
+
+</div>
+</body>
+</html>

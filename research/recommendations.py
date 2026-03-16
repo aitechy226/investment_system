@@ -22,6 +22,28 @@ import pandas as pd
 import requests
 import yfinance as yf
 
+# Polygon price client — enriches Yahoo info with reliable price data
+try:
+    import importlib.util as _ilu_r
+    import os as _os_r
+    _shared_r = _os_r.path.join(_os_r.path.dirname(_os_r.path.abspath(__file__)), '..', 'shared')
+    _spec_r   = _ilu_r.spec_from_file_location(
+                    'polygon_client',
+                    _os_r.path.join(_shared_r, 'polygon_client.py'))
+    _poly_r   = _ilu_r.module_from_spec(_spec_r)
+    _spec_r.loader.exec_module(_poly_r)
+    _poly_snapshots_bulk = _poly_r.fetch_snapshots_bulk
+    _poly_rec_available  = _poly_r.polygon_available
+except Exception as _rec_poly_err:
+    import sys as _sys_r
+    print(
+        f"[recommendations] Polygon client not loaded: {type(_rec_poly_err).__name__}: {_rec_poly_err}. "
+        "Yahoo Finance prices will be used.",
+        file=_sys_r.stderr
+    )
+    def _poly_snapshots_bulk(tickers): return {t: None for t in tickers}
+    def _poly_rec_available(): return False
+
 _MAX_WORKERS = 40
 
 
@@ -76,7 +98,13 @@ def _fetch_info_for_symbol(symbol: str, asset_type: str) -> Optional[Tuple[str, 
         if not info:
             return None
         return (symbol, asset_type, info)
-    except Exception:
+    except Exception as e:
+        import sys as _sys
+        print(
+            f"[recommendations] Data fetch failed for {symbol}: "
+            f"{type(e).__name__}: {e}. Ticker will be excluded from results.",
+            file=_sys.stderr
+        )
         return None
 
 
@@ -102,13 +130,49 @@ def _ensure_universe_info_loaded() -> None:
                 if out is not None:
                     sym, atype, info = out
                     result[sym] = (atype, info)
-            except Exception:
-                pass
+            except Exception as e:
+                sym_ctx, _ = futures[fut]
+                import sys as _sys
+                print(
+                    f"[recommendations] Worker failed for {sym_ctx}: "
+                    f"{type(e).__name__}: {e}. Ticker excluded from universe.",
+                    file=_sys.stderr
+                )
     if not result:
         raise LiveDataRequiredError(
             "No live ticker data could be retrieved. Report cannot be generated. "
             "Check network, rate limits, and data source availability."
         )
+
+    # ── Enrich prices from Polygon bulk snapshot ──
+    # Yahoo price fields (currentPrice, 52w high/low) are unreliable.
+    # Polygon snapshot is authoritative for all price fields.
+    if _poly_rec_available():
+        try:
+            tickers_list = list(result.keys())
+            import sys as _sys
+            print(f"  [recommendations] Enriching prices from Polygon ({len(tickers_list)} tickers)...")
+            snaps = _poly_snapshots_bulk(tickers_list)
+            enriched = 0
+            for sym, (atype, info) in result.items():
+                snap = snaps.get(sym)
+                if snap and snap.get("currentPrice"):
+                    info["currentPrice"]       = snap["currentPrice"]
+                    info["regularMarketPrice"]  = snap["currentPrice"]
+                    if snap.get("fiftyTwoWeekHigh"):
+                        info["fiftyTwoWeekHigh"] = snap["fiftyTwoWeekHigh"]
+                    if snap.get("fiftyTwoWeekLow"):
+                        info["fiftyTwoWeekLow"]  = snap["fiftyTwoWeekLow"]
+                    enriched += 1
+            print(f"  [recommendations] Polygon price enrichment: {enriched}/{len(tickers_list)} tickers")
+        except Exception as e:
+            import sys as _sys
+            print(
+                f"[recommendations] Polygon price enrichment failed: {type(e).__name__}: {e}. "
+                "Yahoo prices will be used.",
+                file=_sys.stderr
+            )
+
     _cached_info = result
 
 
@@ -170,7 +234,13 @@ def _info_to_recommendation_row(symbol, asset_type, info) -> Optional[Recommenda
             fifty_two_week_high=float(high_52) if high_52 is not None else None,
             fifty_two_week_low=float(low_52)  if low_52  is not None else None,
         )
-    except Exception:
+    except Exception as e:
+        import sys as _sys
+        print(
+            f"[recommendations] Row build failed for {symbol}: "
+            f"{type(e).__name__}: {e}. Row excluded from output.",
+            file=_sys.stderr
+        )
         return None
 
 

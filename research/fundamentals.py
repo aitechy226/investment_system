@@ -44,6 +44,40 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from earnings import EarningsInfo, fetch_earnings_date, earnings_flag_text
 from data_freshness import TickerFreshness, assess_freshness, freshness_flag_text
 
+# Polygon fallback — optional, enriches Yahoo fields before scoring
+# Lives in shared/polygon_client.py; no-op if not configured
+try:
+    import importlib.util as _ilu
+    _shared = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared')
+    _spec   = _ilu.spec_from_file_location('polygon_client',
+                  os.path.join(_shared, 'polygon_client.py'))
+    _poly   = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_poly)
+    _enrich_with_polygon = _poly.enrich_with_polygon
+    _polygon_available   = _poly.polygon_available
+except Exception as _poly_err:
+    # Polygon client unavailable — Yahoo Finance used exclusively
+    import sys as _sys
+    print(
+        f"[fundamentals] Polygon client not loaded: {type(_poly_err).__name__}: {_poly_err}. "
+        "Yahoo Finance will be used exclusively.",
+        file=_sys.stderr
+    )
+    def _enrich_with_polygon(ticker, info): return info
+    def _polygon_available(): return False
+
+# Polygon price history — used for momentum scoring
+try:
+    _poly_fetch_price_history = _poly.fetch_price_history
+except Exception as e:
+    import sys as _sys
+    print(
+        f"[fundamentals] fetch_price_history not available on Polygon client: "
+        f"{type(e).__name__}: {e}. Yahoo fallback will be used for momentum.",
+        file=_sys.stderr
+    )
+    def _poly_fetch_price_history(ticker, days=400): return None  # stub
+
 # ── Module weights (must sum to 1.0) ─────────
 MODULE_WEIGHTS = {
     "quality":  0.30,
@@ -255,6 +289,11 @@ def _safe(info: dict, key: str) -> Optional[float]:
 
 
 def _passes_quality_gate(info: dict, sector: str) -> Tuple[bool, str]:
+    """
+    Full quality gate for S&P 500 universe scoring.
+    Filters out thinly-covered, micro-cap, and extreme-leverage tickers.
+    NOT used for watchlist tickers — see _passes_watchlist_gate().
+    """
     opinions = _safe(info, "numberOfAnalystOpinions")
     if opinions is not None and opinions < MIN_ANALYST_OPINIONS:
         return False, f"Only {int(opinions)} analyst opinions (min {MIN_ANALYST_OPINIONS})"
@@ -272,6 +311,19 @@ def _passes_quality_gate(info: dict, sector: str) -> Tuple[bool, str]:
     if not price or price <= 0:
         return False, "No valid price"
 
+    return True, ""
+
+
+def _passes_watchlist_gate(info: dict, sector: str) -> Tuple[bool, str]:
+    """
+    Relaxed gate for watchlist tickers.
+    You put these tickers there intentionally — only block if we
+    genuinely cannot score them (no price data).
+    Analyst coverage and market cap filters are not applied.
+    """
+    price = (_safe(info, "currentPrice") or _safe(info, "regularMarketPrice") or _safe(info, "navPrice"))
+    if not price or price <= 0:
+        return False, "No valid price — Yahoo Finance may not carry this ticker"
     return True, ""
 
 
@@ -420,23 +472,57 @@ def score_value(info: dict, sector: str) -> Tuple[float, Dict]:
 # Module 3 — Momentum (retuned for 1yr+)
 # ─────────────────────────────────────────────
 
-def score_momentum(info: dict, sector: str) -> Tuple[float, Dict]:
+def score_momentum(
+    info: dict,
+    sector: str,
+    price_history: Optional[Dict] = None,
+) -> Tuple[float, Dict]:
+    """
+    Score momentum for 1yr+ investors.
+    Signal priority:
+      1. 12-month real return (double-weighted) — primary
+      2. 6-month real return  — medium-term trend
+      3. 200-day MA           (double-weighted) — trend confirmation
+      4. 50-day MA            — short-term filter
+      5. 52-week range pos    — context only
+    Signals 1+2 require price_history (Task 0-A);
+    falls back to signals 3-5 if unavailable.
+    """
     detail, sub_scores = {}, []
 
     price = (_safe(info, "currentPrice") or _safe(info, "regularMarketPrice") or _safe(info, "navPrice"))
     if not price:
         return 0.0, {"error": "no price"}
 
-    # 200-day MA — primary trend, double-weighted (FIX 4)
+    # ── Signal 1: 12-month real return (double-weighted) ──────────────
+    if price_history:
+        ret_12m = price_history.get("return_12m") or price_history.get("return_available")
+        if ret_12m is not None:
+            s = _score_linear(ret_12m, -30, 50)
+            sub_scores.extend([s, s])   # double weight
+            detail["return_12m_pct"]   = round(ret_12m, 1)
+            detail["return_12m_score"] = round(s, 1)
+            detail["return_source"]    = "12m" if "return_12m" in price_history else "available_history"
+
+    # ── Signal 2: 6-month real return ─────────────────────────────────
+    if price_history:
+        ret_6m = price_history.get("return_6m")
+        if ret_6m is not None:
+            s = _score_linear(ret_6m, -20, 30)
+            sub_scores.append(s)
+            detail["return_6m_pct"]   = round(ret_6m, 1)
+            detail["return_6m_score"] = round(s, 1)
+
+    # ── Signal 3: 200-day MA (double-weighted) ─────────────────────────
     ma200 = _safe(info, "twoHundredDayAverage")
     if ma200 and ma200 > 0:
         pct = (price - ma200) / ma200 * 100
         s   = _score_linear(pct, -30, 30)
-        sub_scores.extend([s, s])   # double weight
+        sub_scores.extend([s, s])
         detail["pct_vs_200d_ma"] = round(pct, 1)
         detail["ma200_score"]    = round(s, 1)
 
-    # 50-day MA — medium trend confirmation
+    # ── Signal 4: 50-day MA ────────────────────────────────────────────
     ma50 = _safe(info, "fiftyDayAverage")
     if ma50 and ma50 > 0:
         pct = (price - ma50) / ma50 * 100
@@ -445,9 +531,7 @@ def score_momentum(info: dict, sector: str) -> Tuple[float, Dict]:
         detail["pct_vs_50d_ma"] = round(pct, 1)
         detail["ma50_score"]    = round(s, 1)
 
-    # 52-week range position (FIX 4)
-    # 0% = at 52w low, 100% = at 52w high
-    # Score range: 20 (at low) to 80 (at high) — avoids penalising highs
+    # ── Signal 5: 52-week range position (context) ────────────────────
     low_52  = _safe(info, "fiftyTwoWeekLow")
     high_52 = _safe(info, "fiftyTwoWeekHigh")
     if low_52 and high_52 and low_52 > 0 and (high_52 - low_52) > 0:
@@ -457,16 +541,11 @@ def score_momentum(info: dict, sector: str) -> Tuple[float, Dict]:
         detail["position_in_52w_range_pct"] = round(pos, 1)
         detail["range_position_score"]      = round(s, 1)
 
-    # Absolute momentum proxy: % above 52w low (FIX 4)
-    if low_52 and low_52 > 0:
-        pct_from_low = (price - low_52) / low_52 * 100
-        s = 30 + _score_linear(pct_from_low, 0, 80) * 0.7
-        sub_scores.append(s)
-        detail["pct_from_52w_low"]   = round(pct_from_low, 1)
-        detail["momentum_52w_score"] = round(s, 1)
-
     score = sum(sub_scores) / len(sub_scores) if sub_scores else 0.0
-    detail["signals_used"] = len(sub_scores)
+    detail["signals_used"]     = len(sub_scores)
+    detail["used_real_returns"] = bool(
+        price_history and ("return_12m" in price_history or "return_6m" in price_history)
+    )
     return round(score, 1), detail
 
 
@@ -570,6 +649,53 @@ class FundamentalScore:
     freshness: Optional[TickerFreshness] = None
 
 
+# ─────────────────────────────────────────────
+# Task 0-A: Real price history for momentum
+# ─────────────────────────────────────────────
+
+# Run-scoped cache: symbol → price history dict
+_price_history_cache: Dict[str, Optional[Dict]] = {}
+
+
+def _fetch_price_history(symbol: str) -> Optional[Dict]:
+    """
+    Fetch 13 months of daily closes for real momentum calculations.
+    Returns dict with return_6m and/or return_12m, or None on failure.
+    Cached per-run to avoid duplicate yfinance history() calls.
+    """
+    if symbol in _price_history_cache:
+        return _price_history_cache[symbol]
+    try:
+        import yfinance as yf
+        hist = yf.Ticker(symbol).history(period="13mo", interval="1d")
+        if hist.empty or len(hist) < 20:
+            _price_history_cache[symbol] = None
+            return None
+        closes  = hist["Close"].dropna()
+        current = float(closes.iloc[-1])
+        result  = {}
+        if len(closes) >= 126:   # ~6 months trading days
+            result["return_6m"]  = (current - float(closes.iloc[-126])) / float(closes.iloc[-126]) * 100
+        if len(closes) >= 252:   # ~12 months trading days
+            result["return_12m"] = (current - float(closes.iloc[-252])) / float(closes.iloc[-252]) * 100
+        elif len(closes) > 20:
+            result["return_available"] = (current - float(closes.iloc[0])) / float(closes.iloc[0]) * 100
+        _price_history_cache[symbol] = result if result else None
+        return _price_history_cache[symbol]
+    except Exception as e:
+        # Price history unavailable — momentum module will fall back to
+        # 52-week range proxy. Log so the user knows real returns were not used.
+        import sys as _sys
+        print(
+            f"[fundamentals] Price history fetch failed for {symbol}: "
+            f"{type(e).__name__}: {e}. "
+            "Momentum will use 52-week range proxy.",
+            file=_sys.stderr
+        )
+        _price_history_cache[symbol] = None
+        return None
+
+
 def score_ticker(symbol: str, asset_type: str, info: dict) -> FundamentalScore:
     name   = (info.get("longName") or info.get("shortName") or symbol)[:40]
     sector = info.get("sector") or info.get("quoteType") or "Unknown"
@@ -585,12 +711,90 @@ def score_ticker(symbol: str, asset_type: str, info: dict) -> FundamentalScore:
             skipped=True, skip_reason=reason,
         )
 
+    # Polygon fallback — enrich info for weak Yahoo fields before scoring
+    if _polygon_available():
+        info = _enrich_with_polygon(symbol, info)
+
     # Assess data freshness immediately — before scoring
     freshness = assess_freshness(symbol, info)
 
+    # Fetch real price history for momentum (Task 0-A)
+    price_history = _fetch_price_history(symbol)
+
     q_score, q_detail = score_quality_growth(info, sector)
     v_score, v_detail = score_value(info, sector)
-    m_score, m_detail = score_momentum(info, sector)
+    m_score, m_detail = score_momentum(info, sector, price_history)
+    i_score, i_detail = score_income(info, sector)
+
+    composite = (
+        q_score * MODULE_WEIGHTS["quality"]  +
+        v_score * MODULE_WEIGHTS["value"]    +
+        m_score * MODULE_WEIGHTS["momentum"] +
+        i_score * MODULE_WEIGHTS["income"]
+    )
+
+    price   = _safe(info, "currentPrice") or _safe(info, "regularMarketPrice") or _safe(info, "navPrice")
+    mktcap  = _safe(info, "marketCap")
+    high_52 = _safe(info, "fiftyTwoWeekHigh")
+    pct_fh  = round((price - high_52) / high_52 * 100, 1) if price and high_52 and high_52 > 0 else None
+
+    fs = FundamentalScore(
+        symbol=symbol, name=name, sector=sector, asset_type=asset_type,
+        quality_score=round(q_score, 1),
+        value_score=round(v_score, 1),
+        momentum_score=round(m_score, 1),
+        income_score=round(i_score, 1),
+        composite_score=round(composite, 1),
+        current_price=price,
+        market_cap_b=round(mktcap / 1e9, 1) if mktcap else None,
+        forward_pe=_safe(info, "forwardPE"),
+        div_yield_pct=round(_safe(info, "dividendYield") * 100, 2) if _safe(info, "dividendYield") else None,
+        revenue_growth_pct=round(_safe(info, "revenueGrowth") * 100, 1) if _safe(info, "revenueGrowth") else None,
+        debt_to_equity=_safe(info, "debtToEquity"),
+        pct_from_52w_high=pct_fh,
+        quality_detail=q_detail,
+        value_detail=v_detail,
+        momentum_detail=m_detail,
+        income_detail=i_detail,
+        is_financial_sector=_is_financial(sector),
+        sector_profile_used=_resolve_sector(sector),
+        freshness=freshness,
+    )
+    fs.flags = _generate_flags(fs, info)
+    return fs
+
+
+def score_ticker_watchlist(symbol: str, asset_type: str, info: dict) -> FundamentalScore:
+    """
+    Score a watchlist ticker using the relaxed gate.
+    Only requires a valid price — analyst coverage and market cap
+    filters are not applied. Used by view_watchlist_flags() for
+    tickers that did not make it through the full universe scoring.
+    """
+    name   = (info.get("longName") or info.get("shortName") or symbol)[:40]
+    sector = info.get("sector") or info.get("quoteType") or "Unknown"
+
+    passes, reason = _passes_watchlist_gate(info, sector)
+    if not passes:
+        return FundamentalScore(
+            symbol=symbol, name=name, sector=sector, asset_type=asset_type,
+            quality_score=0, value_score=0, momentum_score=0, income_score=0,
+            composite_score=0, current_price=None, market_cap_b=None,
+            forward_pe=None, div_yield_pct=None, revenue_growth_pct=None,
+            debt_to_equity=None, pct_from_52w_high=None,
+            skipped=True, skip_reason=reason,
+        )
+
+    # Same enrichment and scoring pipeline as score_ticker()
+    if _polygon_available():
+        info = _enrich_with_polygon(symbol, info)
+
+    freshness     = assess_freshness(symbol, info)
+    price_history = _fetch_price_history(symbol)
+
+    q_score, q_detail = score_quality_growth(info, sector)
+    v_score, v_detail = score_value(info, sector)
+    m_score, m_detail = score_momentum(info, sector, price_history)
     i_score, i_detail = score_income(info, sector)
 
     composite = (
@@ -706,6 +910,7 @@ def enrich_with_earnings(scores: List[FundamentalScore]) -> List[FundamentalScor
         for fs in scores:
             fut = executor.submit(_fetch_earnings_for_score, fs)
             future_to_fs[fut] = fs
+        earnings_errors = []
         for fut in as_completed(future_to_fs):
             fs = future_to_fs[fut]
             try:
@@ -713,8 +918,17 @@ def enrich_with_earnings(scores: List[FundamentalScore]) -> List[FundamentalScor
                 fs.earnings = ei
                 if flag_text and flag_text not in fs.flags:
                     fs.flags.append(flag_text)
-            except Exception:
-                pass
+            except Exception as e:
+                earnings_errors.append(
+                    f"{fs.symbol}: {type(e).__name__}: {e}"
+                )
+    if earnings_errors:
+        import sys as _sys
+        print(
+            f"[fundamentals] Earnings fetch failed for {len(earnings_errors)} ticker(s):\n"
+            + "\n".join(f"  • {err}" for err in earnings_errors),
+            file=_sys.stderr
+        )
     return scores
 
 
@@ -741,13 +955,25 @@ def score_universe(cached_info: Dict[str, tuple]) -> List[FundamentalScore]:
             executor.submit(score_ticker, sym, atype, info): sym
             for sym, atype, info in items
         }
+        scoring_errors = []
         for fut in as_completed(futures):
+            sym = futures[fut]
             try:
                 fs = fut.result()
                 if not fs.skipped:
                     results.append(fs)
-            except Exception:
-                pass
+            except Exception as e:
+                scoring_errors.append(
+                    f"{sym}: {type(e).__name__}: {e}"
+                )
+    if scoring_errors:
+        import sys as _sys
+        print(
+            f"[fundamentals] Scoring failed for {len(scoring_errors)} ticker(s) "
+            f"(skipped from results):\n"
+            + "\n".join(f"  • {err}" for err in scoring_errors),
+            file=_sys.stderr
+        )
     return results
 
 
@@ -781,12 +1007,61 @@ def view_by_strategy(
 def view_watchlist_flags(
     scores: List[FundamentalScore],
     watchlist_tickers: List[str],
+    cached_info: Optional[Dict] = None,
 ) -> Tuple[List[FundamentalScore], List[str]]:
+    """
+    Build View C for watchlist tickers.
+
+    First tries to find each ticker in the already-scored universe.
+    For tickers not in the universe (failed the full quality gate or
+    not in S&P 500), uses cached_info if available (already fetched
+    during the universe scan) or falls back to a fresh yfinance fetch.
+    Scores them using the relaxed watchlist gate — price required only.
+
+    Returns (scored_list, truly_skipped_list).
+    truly_skipped means no valid price was available from Yahoo.
+    """
+    import yfinance as yf
+
     upper   = {t.strip().upper() for t in watchlist_tickers}
     matched = [s for s in scores if s.symbol in upper]
-    skipped = list(upper - {s.symbol for s in matched})
+    matched_symbols = {s.symbol for s in matched}
+
+    # Tickers not in the scored universe — score with relaxed gate
+    missing = upper - matched_symbols
+    truly_skipped = []
+
+    for symbol in sorted(missing):
+        try:
+            # Prefer already-fetched cached data (avoids duplicate yfinance call)
+            if cached_info and symbol in cached_info:
+                asset_type, info = cached_info[symbol]
+            else:
+                # Not in cache — fetch fresh (ticker outside S&P 500 universe)
+                info = yf.Ticker(symbol).info
+                if not info:
+                    truly_skipped.append(symbol)
+                    continue
+                asset_type = info.get("quoteType", "Stock")
+
+            fs = score_ticker_watchlist(symbol, asset_type, info)
+            if fs.skipped:
+                truly_skipped.append(symbol)
+            else:
+                fs.flags.insert(0, "ℹ️  Scored with relaxed gate (not in S&P 500 universe or below coverage threshold)")
+                matched.append(fs)
+        except Exception as e:
+            import sys as _sys
+            print(
+                f"[fundamentals] Watchlist scoring failed for {symbol}: "
+                f"{type(e).__name__}: {e}. "
+                "Ticker added to skipped list.",
+                file=_sys.stderr
+            )
+            truly_skipped.append(symbol)
+
     matched.sort(key=lambda x: x.composite_score)
-    return matched, skipped
+    return matched, truly_skipped
 
 
 # ─────────────────────────────────────────────

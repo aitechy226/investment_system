@@ -640,6 +640,470 @@ def _holding_card(styles, s: FundamentalScore) -> list:
 # Standalone PDF generator
 # ─────────────────────────────────────────────
 
+
+# ─────────────────────────────────────────────
+# HTML Report Generator
+# ─────────────────────────────────────────────
+
+def _html_score_class(score: float) -> str:
+    if score >= 70: return "score-strong"
+    if score >= 50: return "score-fair"
+    return "score-weak"
+
+
+def _html_score_label(score: float) -> str:
+    if score >= 75: return "Strong"
+    if score >= 60: return "Good"
+    if score >= 45: return "Fair"
+    if score >= 30: return "Weak"
+    return "Poor"
+
+
+def _html_pct(val, prefix="") -> str:
+    if val is None: return "—"
+    try:
+        f = float(val)
+        sign = "+" if f >= 0 else ""
+        return f"{prefix}{sign}{f:.1f}%"
+    except Exception:
+        return "—"
+
+
+def _html_val(val, fmt=".1f", suffix="", prefix="") -> str:
+    if val is None: return "—"
+    try:
+        return f"{prefix}{float(val):{fmt}}{suffix}"
+    except Exception:
+        return "—"
+
+
+def _html_earnings_badge(s: "FundamentalScore") -> str:
+    if not s.earnings or s.earnings.urgency == "unknown":
+        return ""
+    urgency = s.earnings.urgency
+    cls = {"critical": "earn-critical", "warning": "earn-warning",
+           "watch": "earn-watch", "clear": "earn-clear"}.get(urgency, "")
+    label = xml.sax.saxutils.escape(s.earnings.label)
+    flag  = xml.sax.saxutils.escape(s.earnings.flag or "")
+    return f'<span class="earn-badge {cls}">{flag} {label}</span>'
+
+
+def _html_freshness_badge(s: "FundamentalScore") -> str:
+    if not s.freshness:
+        return ""
+    status = s.freshness.worst_status
+    if status in ("fresh", None):
+        return ""
+    cls = "stale-very" if status == "very_stale" else "stale"
+    text = xml.sax.saxutils.escape(s.freshness.summary_label or "Data may be stale")
+    return f'<span class="stale-badge {cls}">⚠ {text}</span>'
+
+
+def _html_score_row(s: "FundamentalScore", rank: int = 0) -> str:
+    ticker_url = f"https://finance.yahoo.com/quote/{quote(s.symbol, safe='.')}"
+    cls_comp   = _html_score_class(s.composite_score)
+    cls_q      = _html_score_class(s.quality_score)
+    cls_v      = _html_score_class(s.value_score)
+    cls_m      = _html_score_class(s.momentum_score)
+    cls_i      = _html_score_class(s.income_score)
+
+    rank_cell  = f'<td class="rank">{rank}</td>' if rank else ""
+    rev_g = _html_pct(s.revenue_growth_pct) if s.revenue_growth_pct is not None else "—"
+    fpe   = _html_val(s.forward_pe, ".1f", "x") if s.forward_pe else "—"
+    earn  = _html_earnings_badge(s)
+    fresh = _html_freshness_badge(s)
+
+    return f"""<tr>
+      {rank_cell}
+      <td class="ticker-cell">
+        <a href="{ticker_url}" target="_blank" class="ticker-link">{xml.sax.saxutils.escape(s.symbol)}</a>
+        {earn}{fresh}
+      </td>
+      <td class="name-cell">{xml.sax.saxutils.escape(s.name[:32])}</td>
+      <td class="sector-cell">{xml.sax.saxutils.escape(s.sector)}</td>
+      <td class="score-cell {cls_comp}"><strong>{s.composite_score:.0f}</strong><span class="score-word">{_html_score_label(s.composite_score)}</span></td>
+      <td class="score-cell {cls_q}">{s.quality_score:.0f}</td>
+      <td class="score-cell {cls_v}">{s.value_score:.0f}</td>
+      <td class="score-cell {cls_m}">{s.momentum_score:.0f}</td>
+      <td class="score-cell {cls_i}">{s.income_score:.0f}</td>
+      <td class="metric-cell">{fpe}</td>
+      <td class="metric-cell {'pos' if s.revenue_growth_pct and s.revenue_growth_pct > 0 else 'neg' if s.revenue_growth_pct and s.revenue_growth_pct < 0 else ''}">{rev_g}</td>
+    </tr>"""
+
+
+def _html_scores_table(scores: list, show_rank: bool = False) -> str:
+    rank_th = "<th>Rank</th>" if show_rank else ""
+    rows = ""
+    for i, s in enumerate(scores, 1):
+        rows += _html_score_row(s, rank=i if show_rank else 0)
+    return f"""
+    <div class="table-wrap">
+      <table class="scores-table">
+        <thead><tr>
+          {rank_th}
+          <th>Ticker</th><th>Company</th><th>Sector</th>
+          <th>Composite</th><th>Quality</th><th>Value</th><th>Momentum</th><th>Income</th>
+          <th>Fwd P/E</th><th>Rev Growth</th>
+        </tr></thead>
+        <tbody>{rows}</tbody>
+      </table>
+    </div>"""
+
+
+def _html_holding_card(s: "FundamentalScore") -> str:
+    ticker_url = f"https://finance.yahoo.com/quote/{quote(s.symbol, safe='.')}"
+    earn_badge  = _html_earnings_badge(s)
+    fresh_badge = _html_freshness_badge(s)
+
+    # Module bars
+    def bar(label, score):
+        cls = _html_score_class(score)
+        lbl = _html_score_label(score)
+        return f"""<div class="module-row">
+          <span class="module-name">{label}</span>
+          <div class="module-bar"><div class="module-fill {cls}" style="width:{min(score,100):.0f}%"></div></div>
+          <span class="module-score {cls}">{score:.0f} <em>{lbl}</em></span>
+        </div>"""
+
+    bars = bar("Quality",  s.quality_score)
+    bars += bar("Value",    s.value_score)
+    bars += bar("Momentum", s.momentum_score)
+    bars += bar("Income",   s.income_score)
+
+    # Key metrics
+    def metric(label, val):
+        return f'<div class="kv"><span class="kv-label">{label}</span><span class="kv-value">{val}</span></div>'
+
+    metrics = ""
+    if s.forward_pe:        metrics += metric("Fwd P/E",    _html_val(s.forward_pe, ".1f", "x"))
+    if s.revenue_growth_pct is not None: metrics += metric("Rev Growth", _html_pct(s.revenue_growth_pct))
+    if s.div_yield_pct:     metrics += metric("Div Yield",  _html_val(s.div_yield_pct, ".2f", "%"))
+    if s.debt_to_equity and not s.is_financial_sector:
+                            metrics += metric("D/E Ratio",  _html_val(s.debt_to_equity, ".0f", "%"))
+    if s.pct_from_52w_high: metrics += metric("52w High",   _html_pct(s.pct_from_52w_high))
+    if s.market_cap_b:      metrics += metric("Mkt Cap",    f"${s.market_cap_b:.0f}B")
+
+    # Flags
+    flags_html = ""
+    if s.flags:
+        flags_html = "<ul class='flags'>" + "".join(
+            f"<li>{xml.sax.saxutils.escape(f)}</li>" for f in s.flags[:6]
+        ) + "</ul>"
+
+    cls_comp = _html_score_class(s.composite_score)
+
+    return f"""
+    <div class="holding-card">
+      <div class="card-header">
+        <div class="card-ticker-block">
+          <a href="{ticker_url}" target="_blank" class="card-ticker">{xml.sax.saxutils.escape(s.symbol)}</a>
+          <span class="card-name">{xml.sax.saxutils.escape(s.name[:40])}</span>
+          <span class="card-sector">{xml.sax.saxutils.escape(s.sector)}</span>
+          {earn_badge}{fresh_badge}
+        </div>
+        <div class="card-composite {cls_comp}">
+          <span class="comp-score">{s.composite_score:.0f}</span>
+          <span class="comp-label">{_html_score_label(s.composite_score)}</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-modules">{bars}</div>
+        <div class="card-metrics">{metrics}</div>
+      </div>
+      {flags_html}
+    </div>"""
+
+
+_HTML_CSS = """
+:root {
+  --bg: #ffffff; --bg-1: #f8f9fa; --bg-2: #f0f2f5;
+  --border: #dee2e6; --border-light: #e9ecef;
+  --dark-blue: #0D2137; --mid-blue: #1A4A72; --light-blue: #EAF2FB;
+  --green: #1A7A4A; --green-bg: #e8f5ee;
+  --amber: #CC7700; --amber-bg: #fff8e8;
+  --red: #B22222;   --red-bg: #fff0f0;
+  --grey: #6c757d;  --light-grey: #f5f5f5;
+  --text: #212529;  --text-muted: #6c757d;
+  --mono: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+       font-size: 14px; color: var(--text); background: var(--bg); line-height: 1.5; }
+.page-wrap { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem 3rem; }
+
+/* Header */
+.report-header { background: var(--dark-blue); color: white; padding: 2rem 1.5rem; margin-bottom: 2rem; }
+.report-header h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.3rem; }
+.report-header .meta { font-size: 0.8rem; color: #AABBCC; }
+
+/* Nav */
+.section-nav { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem;
+               padding: 1rem; background: var(--bg-1); border: 1px solid var(--border);
+               border-radius: 6px; }
+.nav-link { padding: 0.4rem 0.9rem; border-radius: 4px; text-decoration: none;
+            font-size: 0.8rem; color: var(--mid-blue); border: 1px solid var(--border);
+            transition: all 0.1s; }
+.nav-link:hover { background: var(--light-blue); border-color: var(--mid-blue); }
+
+/* Section headings */
+.section { margin-bottom: 3rem; }
+.section-title { font-size: 1.1rem; font-weight: 700; color: var(--dark-blue);
+                 border-bottom: 3px solid var(--mid-blue); padding-bottom: 0.5rem;
+                 margin-bottom: 1rem; display: flex; align-items: baseline; gap: 0.75rem; }
+.section-title .count { font-size: 0.75rem; font-weight: 400; color: var(--text-muted); }
+.subsection-title { font-size: 0.95rem; font-weight: 600; color: var(--mid-blue);
+                    margin: 1.5rem 0 0.5rem; border-left: 3px solid var(--mid-blue);
+                    padding-left: 0.6rem; }
+
+/* Legend */
+.legend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+               gap: 0.5rem; margin-bottom: 1rem; }
+.legend-item { padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.78rem; }
+.legend-strong { background: var(--green-bg); color: var(--green); border: 1px solid #b7ddc8; }
+.legend-good   { background: #eaf2fb;          color: var(--mid-blue); border: 1px solid #b8d4ec; }
+.legend-fair   { background: var(--amber-bg);  color: var(--amber); border: 1px solid #f0d090; }
+.legend-weak   { background: #fef9e7;          color: #996600; border: 1px solid #eed890; }
+.legend-poor   { background: var(--red-bg);    color: var(--red); border: 1px solid #e8b4b4; }
+.legend-label  { font-weight: 600; margin-bottom: 0.15rem; }
+.legend-range  { font-family: var(--mono); font-size: 0.72rem; }
+
+/* Scores table */
+.table-wrap { overflow-x: auto; }
+.scores-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.scores-table th { background: var(--dark-blue); color: white; padding: 0.5rem 0.6rem;
+                   text-align: left; font-weight: 600; white-space: nowrap; }
+.scores-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+.scores-table tr:nth-child(even) td { background: var(--bg-1); }
+.scores-table tr:hover td { background: var(--light-blue); }
+.rank { font-family: var(--mono); color: var(--text-muted); font-size: 0.75rem; width: 32px; }
+.ticker-link { font-family: var(--mono); font-weight: 600; color: var(--mid-blue);
+               text-decoration: none; font-size: 0.88rem; }
+.ticker-link:hover { text-decoration: underline; }
+.name-cell { color: var(--text); max-width: 200px; white-space: nowrap;
+             overflow: hidden; text-overflow: ellipsis; }
+.sector-cell { color: var(--text-muted); font-size: 0.75rem; white-space: nowrap; }
+.metric-cell { font-family: var(--mono); font-size: 0.8rem; text-align: right; }
+.metric-cell.pos { color: var(--green); }
+.metric-cell.neg { color: var(--red); }
+.score-cell { font-family: var(--mono); text-align: center; font-size: 0.85rem; white-space: nowrap; }
+.score-cell .score-word { display: block; font-size: 0.6rem; font-family: sans-serif;
+                           text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
+.score-strong { color: var(--green); }
+.score-fair   { color: var(--amber); }
+.score-weak   { color: var(--red); }
+
+/* Badges */
+.earn-badge, .stale-badge { font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 3px;
+                             margin-left: 0.3rem; white-space: nowrap; }
+.earn-critical { background: var(--red-bg);    color: var(--red);   border: 1px solid #e8b4b4; }
+.earn-warning  { background: var(--amber-bg);  color: var(--amber); border: 1px solid #f0d090; }
+.earn-watch    { background: #eaf2fb;          color: var(--mid-blue); border: 1px solid #b8d4ec; }
+.earn-clear    { background: var(--green-bg);  color: var(--green); border: 1px solid #b7ddc8; }
+.stale, .stale-very { background: var(--amber-bg); color: var(--amber); border: 1px solid #f0d090; }
+.stale-very { background: var(--red-bg); color: var(--red); }
+
+/* Holding cards */
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr)); gap: 1rem; }
+.holding-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+                background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.card-header { display: flex; justify-content: space-between; align-items: flex-start;
+               padding: 0.85rem 1rem; background: var(--bg-1); border-bottom: 1px solid var(--border); }
+.card-ticker { font-family: var(--mono); font-size: 1.1rem; font-weight: 700;
+               color: var(--mid-blue); text-decoration: none; display: block; }
+.card-ticker:hover { text-decoration: underline; }
+.card-name   { font-size: 0.8rem; color: var(--text); display: block; margin: 0.1rem 0; }
+.card-sector { font-size: 0.72rem; color: var(--text-muted); display: block; }
+.card-composite { text-align: center; min-width: 64px; }
+.comp-score { font-family: var(--mono); font-size: 1.8rem; font-weight: 700;
+              line-height: 1; display: block; }
+.comp-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em;
+              display: block; margin-top: 2px; }
+.card-body  { display: flex; gap: 1rem; padding: 0.85rem 1rem; }
+.card-modules { flex: 1.5; display: flex; flex-direction: column; gap: 0.4rem; }
+.card-metrics { flex: 1; display: flex; flex-direction: column; gap: 0.3rem; }
+.module-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; }
+.module-name { width: 68px; color: var(--text-muted); flex-shrink: 0; }
+.module-bar  { flex: 1; height: 5px; background: var(--bg-2); border-radius: 3px; overflow: hidden; }
+.module-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+.module-fill.score-strong { background: var(--green); }
+.module-fill.score-fair   { background: var(--amber); }
+.module-fill.score-weak   { background: var(--red);   }
+.module-score { width: 80px; font-family: var(--mono); font-size: 0.75rem; text-align: right;
+                flex-shrink: 0; }
+.module-score em { font-style: normal; font-size: 0.62rem; color: var(--text-muted); margin-left: 2px; }
+.kv { display: flex; justify-content: space-between; font-size: 0.75rem;
+      border-bottom: 1px solid var(--border-light); padding: 0.15rem 0; }
+.kv-label { color: var(--text-muted); }
+.kv-value  { font-family: var(--mono); font-weight: 500; }
+.flags { padding: 0.6rem 1rem; background: var(--bg-1); border-top: 1px solid var(--border);
+         list-style: none; display: flex; flex-direction: column; gap: 0.2rem; }
+.flags li { font-size: 0.75rem; color: var(--text); }
+
+/* Skipped */
+.skipped-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+.skipped-tag  { font-family: var(--mono); font-size: 0.75rem; padding: 0.2rem 0.5rem;
+                background: var(--bg-2); border: 1px solid var(--border); border-radius: 3px;
+                color: var(--text-muted); }
+
+/* Disclaimer */
+.disclaimer { margin-top: 3rem; padding: 1rem; background: var(--bg-1);
+              border: 1px solid var(--border); border-radius: 6px;
+              font-size: 0.72rem; color: var(--text-muted); line-height: 1.6; }
+
+@media print {
+  .section-nav { display: none; }
+  .holding-card { break-inside: avoid; }
+  .section { break-before: page; }
+}
+@media (max-width: 768px) {
+  .cards-grid { grid-template-columns: 1fr; }
+  .card-body  { flex-direction: column; }
+}
+"""
+
+
+def generate_fundamentals_html(
+    view_a_scores: List["FundamentalScore"],
+    view_b_dict:   Dict[str, List["FundamentalScore"]],
+    view_c_scores: List["FundamentalScore"],
+    skipped_symbols: List[str],
+    output_path: Optional[str] = None,
+    reports_dir: str = "reports",
+) -> str:
+    """
+    Generate a standalone Fundamentals Deep Dive HTML report.
+    Returns the output path.
+    """
+    os.makedirs(reports_dir, exist_ok=True)
+    report_date = datetime.now().strftime("%Y-%m-%d_%H%M")
+    if output_path is None:
+        output_path = os.path.join(reports_dir, f"fundamentals_{report_date}.html")
+
+    now_str = datetime.now().strftime("%A, %B %d %Y  %H:%M")
+
+    # ── Navigation links ──────────────────────
+    nav_links = '''
+    <a href="#view-a" class="nav-link">View A — Top Composite</a>
+    <a href="#view-b-quality"  class="nav-link">View B — Quality</a>
+    <a href="#view-b-value"    class="nav-link">View B — Value</a>
+    <a href="#view-b-momentum" class="nav-link">View B — Momentum</a>
+    <a href="#view-b-income"   class="nav-link">View B — Income</a>
+    '''
+    if view_c_scores or skipped_symbols:
+        nav_links += '<a href="#view-c" class="nav-link">View C — Watchlist</a>'
+
+    # ── Legend ────────────────────────────────
+    legend_html = """
+    <div class="legend-grid">
+      <div class="legend-item legend-strong"><div class="legend-label">Strong</div><div class="legend-range">75 – 100</div></div>
+      <div class="legend-item legend-good">  <div class="legend-label">Good</div>  <div class="legend-range">60 – 74</div></div>
+      <div class="legend-item legend-fair">  <div class="legend-label">Fair</div>  <div class="legend-range">45 – 59</div></div>
+      <div class="legend-item legend-weak">  <div class="legend-label">Weak</div>  <div class="legend-range">30 – 44</div></div>
+      <div class="legend-item legend-poor">  <div class="legend-label">Poor</div>  <div class="legend-range">0 – 29</div></div>
+    </div>
+    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:0.5rem;">
+      Scores are relative within the S&amp;P 500 universe using sector-calibrated thresholds.
+      Composite = Quality 30% · Value 25% · Momentum 25% · Income 20%.
+      Ticker symbols link to Yahoo Finance.
+    </p>"""
+
+    # ── View A ────────────────────────────────
+    view_a_html = _html_scores_table(view_a_scores, show_rank=True)
+
+    # ── View B ────────────────────────────────
+    strategy_labels = {
+        "quality":  ("Quality Growth Leaders",  "Highest Quality Growth scores — profitable, growing businesses with strong balance sheets"),
+        "value":    ("Value Opportunities",      "Highest Value scores — trading at attractive multiples relative to fundamentals"),
+        "momentum": ("Momentum Leaders",         "Highest Momentum scores — positive price trends confirmed by fundamentals"),
+        "income":   ("Income Leaders",           "Highest Income scores — sustainable dividends with strong FCF coverage"),
+    }
+    view_b_html = ""
+    for strategy, scores in view_b_dict.items():
+        label, desc = strategy_labels.get(strategy, (strategy.title(), ""))
+        anchor = f"view-b-{strategy}"
+        view_b_html += f'''
+        <div id="{anchor}">
+          <h3 class="subsection-title">{xml.sax.saxutils.escape(label)}</h3>
+          <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem;">{xml.sax.saxutils.escape(desc)}</p>
+          {_html_scores_table(scores, show_rank=True)}
+        </div>'''
+
+    # ── View C ────────────────────────────────
+    view_c_html = ""
+    if view_c_scores:
+        cards = "".join(_html_holding_card(s) for s in view_c_scores)
+        view_c_html += f'<div class="cards-grid">{cards}</div>'
+    if skipped_symbols:
+        tags = "".join(f'<span class="skipped-tag">{xml.sax.saxutils.escape(t)}</span>' for t in sorted(skipped_symbols))
+        view_c_html += f'<p style="margin-top:1rem;font-size:0.78rem;color:var(--text-muted);">Skipped (quality gate or data unavailable):</p><div class="skipped-list">{tags}</div>'
+    if not view_c_html:
+        view_c_html = '<p style="color:var(--text-muted);font-size:0.85rem;">No watchlist tickers provided. Use --watchlist TICKER1,TICKER2 to populate this view.</p>'
+
+    view_c_section = f'''
+    <section class="section" id="view-c">
+      <h2 class="section-title">
+        View C — Watchlist Assessment
+        <span class="count">{len(view_c_scores)} tickers</span>
+      </h2>
+      {view_c_html}
+    </section>'''
+
+    # ── Assemble HTML ─────────────────────────
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fundamental Scoring Report — {report_date}</title>
+<style>{_HTML_CSS}</style>
+</head>
+<body>
+
+<div class="report-header">
+  <h1>Fundamental Scoring Report</h1>
+  <div class="meta">S&amp;P 500 Universe · Generated {now_str} · {len(view_a_scores)} ideas in View A</div>
+</div>
+
+<div class="page-wrap">
+
+  <nav class="section-nav">{nav_links}</nav>
+
+  <section class="section" id="legend">
+    <h2 class="section-title">Score Legend</h2>
+    {legend_html}
+  </section>
+
+  <section class="section" id="view-a">
+    <h2 class="section-title">
+      View A — Top Composite Scores
+      <span class="count">{len(view_a_scores)} ideas</span>
+    </h2>
+    {view_a_html}
+  </section>
+
+  <section class="section" id="view-b">
+    <h2 class="section-title">View B — By Strategy</h2>
+    {view_b_html}
+  </section>
+
+  {view_c_section}
+
+  <div class="disclaimer">
+    This report is generated by an automated system for personal research only.
+    Scores reflect relative fundamental quality within the S&amp;P 500 universe and
+    do not constitute financial advice. Past performance is not indicative of
+    future results. Always conduct your own due diligence.
+  </div>
+
+</div>
+</body>
+</html>"""
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(html)
+    return output_path
+
+
 def generate_fundamentals_pdf(
     view_a_scores: List[FundamentalScore],
     view_b_dict:   Dict[str, List[FundamentalScore]],
